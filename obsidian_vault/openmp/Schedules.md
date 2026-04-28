@@ -52,7 +52,13 @@ for (std::size_t i = 0; i < n; ++i) sum += busy_work(cost(i));
 | Queue dispatch overhead per chunk dominates | Same as `static` — imbalance returns |
 | Cache lines bounce between threads | One thread gets a cluster of spikes |
 
-For a spike-every-10 workload, `C = 64` is a reasonable starting point. Measure at each thread count.
+### Picking C for a spike workload
+
+For a **spike-every-10-iterations** workload (like A1's `f(x)`), a chunk of `C = 64` contains ~6–7 spike iterations. That's enough to average out the spike cost across the chunk — threads that pull an all-spike chunk and threads that pull an all-cheap chunk differ only modestly. Meanwhile `C = 64` amortises dispatch overhead: with N = 1e8 and 128 threads, a chunk of 64 means ~1.2 million dispatches instead of 1e8.
+
+Rule of thumb: **choose C so that a typical chunk contains several spikes** (C ≈ 5–10 × spike-spacing) and is large enough that dispatch overhead < 5 % of the chunk's compute time. Measure — the crossover shifts with thread count and hardware.
+
+For the A1 schedule sweep, start with `C ∈ {32, 64, 128}` and pick the timing winner at each thread count.
 
 ## Default schedule is implementation-defined
 

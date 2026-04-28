@@ -50,6 +50,23 @@ The grader checks these arithmetic identities within 2 %. This is an internal-co
 | Lint (clang-format, clang-tidy, cppcheck) | 4 | CI lint workflow |
 | README / English readability | 3 | Manual |
 
+## Grading branch: `feature/eval`
+
+The grader snapshots the **`feature/eval`** branch at the end of day 5. Work on that branch from day 2. Pushing to `main` does not get graded.
+
+## Commit history (academic integrity, 0 pts)
+
+Commit history is reviewed for academic integrity — no marks deducted automatically, but flagged histories get a closer human look. The grader checks:
+
+| Signal | "OK" | Flagged |
+|---|---|---|
+| Commit count + days | ≥ 8 commits across ≥ 3 distinct calendar days | < 3 commits |
+| Mega-commit | Largest commit ≤ 70 % of total diff | Largest > 90 % |
+| Message quality | < 50 % token messages (`fix`, `wip`, `update`, `< 15 chars`) | > 80 % token |
+| Last-day fraction | < 50 % of diff on day 5 | 100 % on day 5 |
+
+Aim for one or two meaningful commits per working session with descriptive one-line subjects. See `assessment/handouts/commit-history-guidance.md` for examples.
+
 ## CI / GitHub Actions
 
 Push to your branch to get formative feedback:
