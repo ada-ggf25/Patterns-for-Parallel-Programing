@@ -73,5 +73,5 @@ The winner can shift with thread count: at low counts, dispatch overhead of `dyn
 ## Related
 
 - [[for directive]] — the loop form and other clauses.
-- [[parallel for directive]] — `parallel for` specifics and `nowait`.
+- [[for directive]] — `parallel for` canonical form, `nowait`, and `collapse`.
 - [[../assessment/A1 Integration]] — A1 requires a schedule sweep.

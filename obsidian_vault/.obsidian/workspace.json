@@ -186,6 +186,7 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
+    "parallel for directive.md",
     "CLAUDE.md.tmp.16263.1777370429685",
     "CLAUDE.md.tmp.16263.1777370417216",
     "Index.md.tmp.16263.1777370408300",
@@ -202,7 +203,6 @@
     "performance/STREAM and HPL.md",
     "performance/STREAM and HPL.md.tmp.16263.1777370265733",
     "performance/Six Sources of Overhead.md",
-    "performance/Six Sources of Overhead.md.tmp.16263.1777370241286",
     "performance/Loop Transformations.md",
     "performance/SIMD.md",
     "performance/NUMA First Touch.md",

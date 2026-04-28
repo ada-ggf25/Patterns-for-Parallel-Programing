@@ -48,6 +48,20 @@
         "a": 1,
         "rgb": 5419488
       }
+    },
+    {
+      "query": "path:performance  ",
+      "color": {
+        "a": 1,
+        "rgb": 5395168
+      }
+    },
+    {
+      "query": "path:assessment  ",
+      "color": {
+        "a": 1,
+        "rgb": 11621088
+      }
     }
   ],
   "collapse-display": true,
