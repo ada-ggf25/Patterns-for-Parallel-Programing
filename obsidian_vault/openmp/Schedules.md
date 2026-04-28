@@ -1,0 +1,77 @@
+# Schedules
+
+The `schedule` clause controls how iterations of a `parallel for` are distributed across threads. The right choice matters when per-iteration work is not uniform.
+
+## Schedule kinds
+
+| Schedule | Distribution | Best use |
+|---|---|---|
+| `static` | Contiguous equal-size chunks; one pass | Uniform cost per iteration |
+| `static, C` | Chunks of size C, round-robin | Uniform cost, some NUMA control |
+| `dynamic, C` | Threads pull C-iter chunks from a queue on demand | Irregular cost |
+| `guided` | Chunks start large and shrink toward loop end | Cost decreasing toward loop end |
+| `auto` | Implementation decides | Rarely useful — use explicit |
+| `runtime` | Read `OMP_SCHEDULE` env var | Testing different schedules without recompile |
+
+`C` is the chunk size — a tuning parameter.
+
+## The spike workload problem
+
+If some iterations cost 10× more than others, `static` clusters all the spikes on whichever thread owns that range. The fast threads finish and sit idle at the barrier:
+
+```
+Thread 0: ████ DONE ———————— wait at barrier
+Thread 1: ████████████████ (has all the spikes)
+Thread 2: ████ DONE ————————
+Thread 3: ████ DONE ————————
+           ↑ all idle until thread 1 finishes
+```
+
+`dynamic, C` or `guided` work-steal so expensive iterations distribute across the team.
+
+## Code: three variants of the same kernel
+
+```cpp
+// static — one contiguous chunk per thread
+#pragma omp parallel for default(none) shared(n) reduction(+:sum) schedule(static)
+for (std::size_t i = 0; i < n; ++i) sum += busy_work(cost(i));
+
+// dynamic, 64 — pull 64 iters on demand
+#pragma omp parallel for default(none) shared(n) reduction(+:sum) schedule(dynamic, 64)
+for (std::size_t i = 0; i < n; ++i) sum += busy_work(cost(i));
+
+// guided — start big, shrink toward end
+#pragma omp parallel for default(none) shared(n) reduction(+:sum) schedule(guided)
+for (std::size_t i = 0; i < n; ++i) sum += busy_work(cost(i));
+```
+
+## Chunk size tuning (`dynamic, C`)
+
+| C too small (= 1) | C too big (= N/P) |
+|---|---|
+| Queue dispatch overhead per chunk dominates | Same as `static` — imbalance returns |
+| Cache lines bounce between threads | One thread gets a cluster of spikes |
+
+For a spike-every-10 workload, `C = 64` is a reasonable starting point. Measure at each thread count.
+
+## Default schedule is implementation-defined
+
+If no `schedule` clause appears, OpenMP picks for you — GCC and Clang use `static` with equal chunks. This is **not portable**. Always specify a schedule explicitly when iteration cost is non-uniform. A missing schedule is a correctness risk, not a performance risk, but it means your code's behaviour depends on the compiler version.
+
+## Schedule-sweep methodology (A1)
+
+For an unfamiliar workload, measure all three at each thread count `{1, 16, 64, 128}`:
+
+```cpp
+const double t_static  = time(sum_static, n);
+const double t_dynamic = time(sum_dynamic_64, n);
+const double t_guided  = time(sum_guided, n);
+```
+
+The winner can shift with thread count: at low counts, dispatch overhead of `dynamic` doesn't pay off; at high counts, load-balance wins. Record all three in `tables.csv`.
+
+## Related
+
+- [[for directive]] — the loop form and other clauses.
+- [[parallel for directive]] — `parallel for` specifics and `nowait`.
+- [[../assessment/A1 Integration]] — A1 requires a schedule sweep.

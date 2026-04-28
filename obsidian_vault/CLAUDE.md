@@ -1,0 +1,49 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this directory is
+
+Study notes for the **Patterns for Parallel Programming** module at Imperial College London, written in Obsidian-flavoured Markdown. The vault now covers the **full module** (Lecture 1 + Lecture 2):
+
+- **Lecture 1** (original): HPC intro, CX3, PBS, OpenMP basics, MPI basics.
+- **Lecture 2** (added): OpenMP in depth (data sharing, synchronisation, tasks, SIMD, NUMA, roofline) + assessment notes (A1/A2/A3).
+
+Companion code lives in `../Lecture 1/examples/` (Lecture 1) and `../Lecture 2/snippets/` (Lecture 2). These notes contain no build artefacts.
+
+## Vault structure
+
+```
+Index.md         Entry point — full reading order for both lectures
+cluster/         Hardware, login, filesystems, NUMA, topology (Lecture 1)
+modules/         Lmod commands, tools/prod gateway, loading combos
+pbs/             PBS directives, resource selection, job lifecycle, queues
+openmp/          All OpenMP content — Lecture 1 basics + Lecture 2 depth
+  Lecture 1: OpenMP Overview, parallel/for/reduction directives,
+             Variable Scoping, OMP Env Vars, Thread Pinning, Fork-Join,
+             Amdahl's Law, Building OpenMP, Pitfalls, Reading the log
+  Lecture 2: _OPENMP Macro, Data Races and TSan, Schedules,
+             User-Defined Reductions, Barriers, critical and atomic,
+             Memory Model, Locks, single and masked,
+             Tasks, Task Dependences, taskloop
+mpi/             SPMD model, six essential calls, reductions, hybrid mode
+examples/        Walk-throughs of pi_serial / pi_openmp / pi_mpi
+performance/     Lecture 2 performance topics (NEW)
+  Roofline Model, Performance Metrics, Timing omp_get_wtime,
+  False Sharing, NUMA First Touch, SIMD, Loop Transformations,
+  Six Sources of Overhead, STREAM and HPL
+assessment/      A1 / A2 / A3 deliverables and scoring notes (NEW)
+  Assessment Overview, A1 Integration, A2 Mandelbrot, A3 Jacobi
+```
+
+## Authoring conventions
+
+- **Internal links** use Obsidian wiki-link syntax: `[[folder/Note Title]]` or `[[Note Title|display text]]`. The vault is configured for relative links (`newLinkFormat: relative`).
+- **No front-matter** is used in any note — Obsidian properties are off; don't add YAML front-matter.
+- Each note is self-contained but cross-links heavily. When adding a note, wire it into `Index.md` under the relevant topic map section and suggested reading order if it fits the linear flow.
+- Code blocks use fenced triple-backtick with a language tag (`bash`, `cmake`, `cpp`, `text`).
+- The `## Related` section at the bottom of most notes lists wiki-links to adjacent notes — maintain this pattern.
+
+## Obsidian settings (`.obsidian/`)
+
+Settings are checked in. Do not modify `app.json` or `core-plugins.json` without a reason — they control link format and enabled plugins for the whole vault.

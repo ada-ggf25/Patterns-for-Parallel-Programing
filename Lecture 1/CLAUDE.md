@@ -52,9 +52,12 @@ qsub examples/mpi/pi_mpi.pbs
 ## Architecture
 
 ```
-cx3-hpc-intro.qmd      # single-source Quarto deck (Beamer + RevealJS)
-_quarto.yml            # project-level Quarto config (freeze: auto)
-Makefile               # build targets for slides and examples
+cx3-hpc-intro.qmd                   # single-source Quarto deck (Beamer + RevealJS)
+_quarto.yml                         # project-level Quarto config (freeze: auto)
+Makefile                            # build targets for slides and examples
+CLAUDE.md / AGENTS.md               # identical — AGENTS.md kept for Codex compatibility
+check_queue_busyness.sh             # helper: polls qstat to gauge CX3 queue load
+Demystify_and_Intro_to_HPC_box_2026_Mar10.pdf  # pre-rendered PDF hand-out (do not regenerate)
 examples/
   CMakeLists.txt       # top-level CMake; requires OpenMP + MPI
   serial/              # plain C++ baseline
