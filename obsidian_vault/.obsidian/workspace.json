@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "assessment/A1 Integration.md",
+                "file": "Index.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "A1 Integration"
+              "title": "Index"
             }
           }
         ]
@@ -190,9 +190,13 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
+    "assessment/A1 Integration.md",
+    "CLAUDE.md.tmp.16263.1777376757291",
+    "CLAUDE.md.tmp.16263.1777376750493",
+    "Index.md.tmp.16263.1777376649906",
+    "Index.md.tmp.16263.1777376649404",
     "assessment/Assessment Overview.md",
     "Index.md",
-    "assessment/A1 Integration.md",
     "cluster/Login and Authentication.md",
     "pbs/Interactive Jobs.md.tmp.16263.1777372522575",
     "examples/Building the Examples.md.tmp.16263.1777372521684",
@@ -201,11 +205,7 @@
     "Index.md.tmp.16263.1777372512549",
     "parallel for directive.md",
     "CLAUDE.md.tmp.16263.1777370429685",
-    "CLAUDE.md.tmp.16263.1777370417216",
-    "Index.md.tmp.16263.1777370408300",
-    "openmp/Variable Scoping.md.tmp.16263.1777370370303",
     "assessment/A3 Jacobi.md",
-    "assessment/A3 Jacobi.md.tmp.16263.1777370354240",
     "assessment/A2 Mandelbrot.md",
     "performance/STREAM and HPL.md",
     "performance/Six Sources of Overhead.md",
@@ -224,7 +224,6 @@
     "openmp/single and masked.md",
     "openmp/Locks.md",
     "openmp/Memory Model.md",
-    "openmp/critical and atomic.md",
-    "openmp/Barriers.md"
+    "openmp/critical and atomic.md"
   ]
 }

@@ -1,8 +1,8 @@
 # PPP — Vault Index
 
-This vault covers the full **Patterns for Parallel Programming** module at Imperial College London (Lecture 1: HPC intro + Lecture 2: OpenMP in depth + assessments).
+This vault covers the full **Patterns for Parallel Programming** module at Imperial College London (Introduction: HPC intro + Week 1: OpenMP in depth + assessments).
 
-## Lecture 1 — Suggested reading order
+## Introduction — Suggested reading order
 
 1. [[cluster/CX3 Overview]] — what the cluster is.
 2. [[cluster/Login and Authentication]] — how to connect.
@@ -14,7 +14,7 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 8. [[mpi/MPI Overview]] → [[mpi/SPMD Model]] → [[mpi/MPI Six Essentials]] → [[mpi/MPI Reduce]] → [[examples/pi_mpi]].
 9. [[mpi/OpenMP vs MPI]] and [[mpi/Hybrid MPI OpenMP]] to wrap up.
 
-## Lecture 2 — Suggested reading order
+## Week 1 — Suggested reading order
 
 **Day 2 — parallel regions, data sharing, work-sharing:**
 

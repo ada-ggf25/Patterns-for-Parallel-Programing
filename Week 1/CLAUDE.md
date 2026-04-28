@@ -81,6 +81,9 @@ docs/
   cx3-benchmarking.md    How to run and record performance on CX3
   outcomes.md            Learning-outcome blueprint
   rome-inventory.md      Measured STREAM bandwidth, peak FLOPs, module names on Rome
+  rome-inventory.pbs     PBS script to collect Rome hardware numbers
+  rome-hpl.pbs           HPL benchmark submission script
+  rome-calibration-raw/  Raw benchmark output data
 requirements.txt         Python deps for slides/tools (build_partials, render_*.py)
 ```
 
