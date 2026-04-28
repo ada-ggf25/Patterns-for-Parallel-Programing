@@ -1,0 +1,7 @@
+{
+  "useMarkdownLinks": true,
+  "newFileLocation": "current",
+  "newLinkFormat": "relative",
+  "promptDelete": true,
+  "trashOption": "local"
+}

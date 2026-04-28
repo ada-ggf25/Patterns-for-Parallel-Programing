@@ -1,0 +1,49 @@
+name: Snippets — macOS Homebrew Clang build + test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'snippets/**'
+      - '.github/workflows/snippets-macos.yml'
+  pull_request:
+    paths:
+      - 'snippets/**'
+      - '.github/workflows/snippets-macos.yml'
+
+jobs:
+  build-release-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          brew update
+          brew install cmake ninja llvm libomp
+
+      - name: Fetch doctest.h
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/doctest/doctest/v2.4.11/doctest/doctest.h \
+            -o snippets/third_party/doctest.h
+
+      - name: Configure (Release)
+        run: |
+          cmake -S snippets -B snippets/build/release \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
+            -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+
+      - name: Build
+        run: cmake --build snippets/build/release -j
+
+      - name: Test (Release; -LE 'RACE_DEMO|perf')
+        # Homebrew LLVM does not ship libarcher.so on macOS, so we
+        # skip the TSan lane on this runner. Race-demo coverage lives
+        # in the Ubuntu workflow; the macOS workflow guards the
+        # laptop-build path.
+        run: |
+          ctest --test-dir snippets/build/release --output-on-failure \
+            -LE 'RACE_DEMO|perf'

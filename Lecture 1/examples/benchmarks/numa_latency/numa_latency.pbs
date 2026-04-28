@@ -1,0 +1,39 @@
+#!/bin/bash
+# Measure the NUMA latency matrix on a Rome node.
+#
+# Submit from examples/benchmarks/numa_latency/ :
+#   qsub numa_latency.pbs
+# Output goes to numa_latency.o<jobid> and contains the 8x8 matrix.
+
+#PBS -N numa_latency
+#PBS -l walltime=00:45:00
+#PBS -l select=1:ncpus=128:mem=500gb:cpu_type=rome
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+ml tools/prod
+ml GCC/14.3.0 numactl/2.0.19-GCCcore-14.3.0
+
+gcc -O2 -o numa_latency numa_latency.c -lnuma
+
+echo "# Host: $(hostname)"
+lscpu | grep -E 'Model name|Socket|NUMA node\(s\)|^CPU\(s\)' | head -6
+echo
+echo "### numactl --hardware ###"
+numactl --hardware
+echo
+echo "### Latency matrix (ns/access; 256 MB buffer, 50M iterations/cell) ###"
+printf "src\\\\tgt"
+for tgt in 0 1 2 3 4 5 6 7; do printf "\t%d" "$tgt"; done
+echo
+for src in 0 1 2 3 4 5 6 7; do
+    printf "%d" "$src"
+    for tgt in 0 1 2 3 4 5 6 7; do
+        lat=$(numactl --cpunodebind="$src" --localalloc -- \
+              ./numa_latency "$tgt" 256 50000000 2>/dev/null \
+              | awk -F'lat_ns=' '{print $2}')
+        printf "\t%s" "${lat:-NA}"
+    done
+    echo
+done

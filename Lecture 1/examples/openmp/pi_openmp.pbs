@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -N pi_openmp
+#PBS -l walltime=00:10:00
+#PBS -l select=1:ncpus=8:mem=4gb:ompthreads=8:cpu_type=rome
+# cpu_type=rome pins the job to an AMD EPYC 7742 node (128c, 8-NUMA).
+# Dropping this selector would let the scheduler place you on either
+# rome or icelake (Intel Xeon 8358), so 8-thread timings from two students
+# could legitimately differ by ~2x just from the hardware. Swap to
+# cpu_type=icelake if you want the Intel tier.
+
+# Submit from the examples/ directory:
+#   cd ic-hpc-intro/examples && qsub openmp/pi_openmp.pbs
+#
+# ompthreads=N in the -l line sets OMP_NUM_THREADS inside the job.
+# Bump ncpus/ompthreads together (match them) to scale up.
+
+cd $PBS_O_WORKDIR
+
+ml tools/prod
+ml GCC OpenMPI      # OpenMPI pulls in hwloc (lstopo) and numactl on PATH
+
+# --- Node topology the scheduler handed us ----------------------------------
+# Run these INSIDE the job so the view is limited to the cpuset PBS allocated,
+# not the whole compute node. Useful for understanding what "ncpus=8" gave us.
+echo "=== lscpu (summary) ==="
+lscpu | sed -n '1,25p'
+echo
+echo "=== numactl --hardware (NUMA view + distance matrix) ==="
+numactl --hardware
+echo
+echo "=== lstopo-no-graphics (full hierarchy) ==="
+lstopo-no-graphics --no-io
+echo "=== end topology ==="
+echo
+
+# --- OpenMP thread placement -------------------------------------------------
+# OMP_NUM_THREADS is set automatically by ompthreads=8 above.
+# Pin each thread to a core and keep them packed (close) so they share a
+# socket / NUMA node whenever possible. For bandwidth-bound kernels you would
+# instead use OMP_PROC_BIND=spread to hit multiple memory controllers.
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export OMP_DISPLAY_AFFINITY=TRUE    # one line per thread showing its core
+
+./build/openmp/pi_openmp

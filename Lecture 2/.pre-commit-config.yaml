@@ -1,0 +1,29 @@
+# pre-commit hook set. Students and graders share this so local commits hit
+# the same lint gates as CI.
+#
+# Install: `pip install pre-commit && pre-commit install` (once per clone).
+
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.5
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]
+        files: '(snippets|assignment-[0-9]+)/.*\.(cpp|h|hpp)$'
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.13.0
+    hooks:
+      - id: markdownlint-cli2
+        args: ['--config', '.markdownlint.yaml']
+        files: '\.(md|qmd)$'
+        exclude: '^(legacy|venv|snippets/build)/'
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict

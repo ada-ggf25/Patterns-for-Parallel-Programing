@@ -1,0 +1,147 @@
+---
+title: "PPP-OpenMP — Week schedule"
+subtitle: "Shared-memory programming with OpenMP — days 1 to 5"
+author: "Gerard Gorman"
+institute: "Department of Earth Science and Engineering — Imperial College London"
+date: today
+date-format: long
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    theme: simple
+    smooth-scroll: true
+    number-sections: false
+    code-overflow: wrap
+---
+
+## What this page is
+
+The PPP-OpenMP block is **5 days**. Day 1 is the sibling
+[`ppp-hpc-intro`](https://github.com/ese-ada-lovelace-2025/ppp-hpc-intro)
+course; days 2–4 are the OpenMP teaching proper; day 5 is iteration on
+the assessment. This page is the at-a-glance week schedule. Click into
+each day's deck for the slides.
+
+The decks are pinned to [**OpenMP 5.1**](https://www.openmp.org/spec-html/5.1/openmp.html).
+The companion repos are
+[`ppp-openmp-assessment`](https://github.com/ese-ada-lovelace-2025/ppp-openmp-assessment)
+(students fork this) and a private grader repo (instructor only).
+
+## Daily shape
+
+Days 2 – 4 all share this shape:
+
+| Slot | Hours | What |
+|---|---|---|
+| **Morning** | 09:00 – 12:00 | All lecturing. Short exercises to break up the talking. |
+| Lunch | 12:00 – 14:00 | — |
+| **Afternoon** | 14:00 – 17:00 | Coursework only. No new material. Instructor on hand for code review and questions. |
+
+The deck for each day carries the morning's lecture content. The
+afternoon is the lab session for that day's assignment (A1 / A2 / A3).
+Day 5 has no new lecture material — it's open-lab iteration across
+all three assignments, ending with the final snapshot at 17:00.
+
+## At-a-glance
+
+| Day | Focus | Coursework you should leave with |
+|---|---|---|
+| 1 | HPC + OpenMP fundamentals (sibling course) | Working CX3 login + a hello-world OpenMP PBS job |
+| 2 | OpenMP parallel regions, data sharing, work sharing → [day 2 deck](day2.html) | **A1** complete (numerical integration) |
+| 3 | OpenMP synchronisation, memory model, tasks → [day 3 deck](day3.html) | **A2** complete (Mandelbrot two-variant) |
+| 4 | OpenMP performance: NUMA, roofline, SIMD → [day 4 deck](day4.html) | **A3-core + chosen A3-extension** complete |
+| 5 | Iteration / synthesis | Final snapshot of A1 + A2 + A3 (graded) |
+
+## Day 1 — HPC fundamentals + first taste of OpenMP
+
+*Sibling course `ppp-hpc-intro`. The PPP-OpenMP day-2 morning recap
+assumes everything below is done.*
+
+**Morning** *(typical, set by the sibling course)*
+
+- Demystifying HPC; what is CX3.
+- Connecting: SSH, login shards, the RDS shared filesystem, scratch.
+- Environment modules (`Lmod`, `tools/prod`, swapping versions).
+- PBS — directives, resource requests, monitoring, queues.
+
+**Afternoon**
+
+- A first OpenMP hello-world (`#pragma omp parallel`, `OMP_NUM_THREADS`).
+- Fork-join mental model.
+- A first reduction.
+- A first appearance of `OMP_PLACES` / `OMP_PROC_BIND`.
+- Sibling-course coursework / sandbox time on CX3.
+
+**You leave day 1 with**: a CX3 login that works, modules loading, a
+PBS job submitting and producing `.o` / `.e` output, and an OpenMP
+hello-world running at multiple thread counts.
+
+## Day 2 — OpenMP parallel regions, data sharing, work sharing
+
+*Deck: [day 2](day2.html). Coursework: [`assignment-1/`](https://github.com/ese-ada-lovelace-2025/ppp-openmp-assessment/tree/main/assignment-1) — numerical integration.*
+
+**Morning lecture** — recap from day 1, OpenMP toolchain, mental model + roofline pre-teach (we use it all week), then the building blocks of A1: parallel regions, thread queries, data-sharing clauses with a TSan-flagged race demo, reductions, `parallel for` + schedule kinds, tips & gotchas.
+
+**Afternoon — A1 lab.** Parallelise `integrate.cpp`, run a schedule sweep, fill in `tables.csv` + REFLECTION + MCQ, push and watch formative CI light up. Instructor on hand.
+
+**End-of-day deliverable**: A1 complete (correctness across `{1, 16, 64, 128}` threads + measurement table + REFLECTION + MCQ).
+
+## Day 3 — OpenMP synchronisation, memory model, tasks
+
+*Deck: [day 3](day3.html). Coursework: [`assignment-2/`](https://github.com/ese-ada-lovelace-2025/ppp-openmp-assessment/tree/main/assignment-2) — Mandelbrot two-variant.*
+
+**Morning lecture** — A1 retrospective; `critical` vs `atomic` vs `reduction`; OpenMP-5.1 memory model with a TSan-flagged publish/subscribe race demo; barriers; explicit locks; `single` / `masked` / `nowait`; tasks (`task`, `taskwait`, `taskgroup`); task dependences + `taskloop`; live mini-demo of tasks vs parallel-for on an irregular workload.
+
+**Afternoon — A2 lab.** Implement **both** `mandelbrot_for.cpp` and `mandelbrot_tasks.cpp`; fill in `tables.csv` per-variant per-thread-count; draft `CHOICE.md` against your *own* measurements; REFLECTION + MCQ. Instructor on hand.
+
+**End-of-day deliverable**: A2 complete (both variants compile + correct, your own perf numbers committed, `CHOICE.md` consistent with them, REFLECTION + MCQ).
+
+## Day 4 — OpenMP performance: NUMA, roofline, SIMD
+
+*Deck: [day 4](day4.html). Coursework: [`assignment-3/`](https://github.com/ese-ada-lovelace-2025/ppp-openmp-assessment/tree/main/assignment-3) — 3D Jacobi (core + extension).*
+
+**Morning lecture** — A2 retrospective; six sources of parallel-region overhead and how to use `omp_get_wtime`; roofline model proper treatment with Rome ceilings; `collapse(N)` and loop transformations; cache coherency + live false-sharing demo; NUMA first-touch on Rome's 8 domains; SIMD (`#pragma omp simd`, `declare simd`, `aligned`, `safelen`); A3 brief.
+
+**Afternoon — A3 lab.** Parallelise the Jacobi step (`assignment-3/core/`); pick ONE extension (NUMA / false-sharing / SIMD); implement before/after variants; run a scaling study at `{1, 16, 64, 128}` on Rome; commit `perf-results-a3.json`; fill in `EXTENSION.md`. Instructor on hand.
+
+**End-of-day deliverable**: A3-core + chosen A3-extension complete (correctness, perf numbers, `EXTENSION.md` filled in, REFLECTION + MCQ).
+
+## Day 5 — Iteration and final snapshot
+
+*No new lecture material. The week's content is in the four decks
+above; today is for tightening it up against your own measurements.*
+
+**Morning — open lab + targeted code review**
+
+- 09:00 — pick whichever of A1 / A2 / A3 has the weakest evidence in your CI runs and your `tables.csv`. Tighten it.
+- Common day-5 wins:
+    - **A1**: re-run schedule sweep, refine REFLECTION, sharpen the short-prompt answer.
+    - **A2**: revisit the `grainsize`, regenerate `perf-results-a2.json`, double-check `CHOICE.md` follows your own data.
+    - **A3-extension**: most students get the biggest day-5 marginal return here. Push your delta past the next soft threshold (or document why it doesn't go higher).
+- ~ 10:30 break, then continue.
+
+**Afternoon — final snapshot**
+
+- 14:00 — same as morning: lab support; ask me anything.
+- ~ 15:30 break.
+- 16:30 — instructor announces snapshot in 30 min. Stop pushing new code; review your own commits, your `tables.csv` consistency, your `REFLECTION.md` word counts, your `CHOICE.md` / `EXTENSION.md` headers.
+- **17:00 — final snapshot.** Whatever is on your `feature/eval` branch is what gets graded.
+
+## How performance is graded (one-page summary)
+
+- **A1, A2** — *reference-parallel-time ratio* against a published `T_ref(128)` measured by an instructor-authored reference solution on Rome. Score: `min(1, T_ref(128) / T_student(128)) × full_pts`. Correctness-gated.
+- **A3-core** — *roofline fraction* vs measured Rome STREAM (246.2 GB/s peak hardware ceiling, achieved at 32 threads one-per-CCX; 231.5 GB/s at 128 threads full-node — what A3 typically sees). Graduated: 0.70 / 0.50 / 0.30 / 0.15. Correctness-gated.
+- **CHOICE.md (A2)** — graded against the *student's own* committed `perf-results-a2.json`, not against canonical times. Either variant can be the right answer if the recommendation follows the student's evidence.
+- **MCQ + tables.csv internal-consistency + REFLECTION format-check + small instructor-marked reasoning questions** carry the reasoning marks. **No LLM in the summative path.**
+
+Full rubric: [`assessment/rubric.md`](../assessment/rubric.md). Learning
+outcomes & Bloom alignment: [`docs/outcomes.md`](../docs/outcomes.md).
+
+## Setup pointers
+
+- **Laptop builds**: [`docs/local-setup-macos.md`](../docs/local-setup-macos.md), [`docs/local-setup-linux.md`](../docs/local-setup-linux.md).
+- **CX3 self-benchmarks**: [`docs/cx3-benchmarking.md`](../docs/cx3-benchmarking.md).
+- **What works where**: [`docs/toolchain-matrix.md`](../docs/toolchain-matrix.md).
+- **Rome hardware reference**: [`docs/rome-inventory.md`](../docs/rome-inventory.md).
+- **Commit-history guidance** (academic-integrity-relevant): [`assessment/handouts/commit-history-guidance.md`](../assessment/handouts/commit-history-guidance.md).

@@ -1,0 +1,51 @@
+name: Lint — Quarto / markdown / links
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - '**/*.qmd'
+      - '.markdownlint.yaml'
+      - '.lychee.toml'
+      - '.github/workflows/lint-quarto.yml'
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.qmd'
+  schedule:
+    # Weekly link check.
+    - cron: '0 5 * * 1'
+
+jobs:
+  quarto-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: quarto-dev/quarto-actions/setup@v2
+      - name: quarto check
+        run: quarto check
+
+  markdownlint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          config: '.markdownlint.yaml'
+          globs: |
+            **/*.md
+            **/*.qmd
+            !venv/**
+            !snippets/build/**
+            !snippets/third_party/**
+
+  lychee:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config .lychee.toml './**/*.md' './**/*.qmd'
+          fail: true

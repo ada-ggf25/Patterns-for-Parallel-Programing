@@ -1,0 +1,136 @@
+name: Snippets — Ubuntu Clang build + test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'snippets/**'
+      - '.github/workflows/snippets-build.yml'
+  pull_request:
+    paths:
+      - 'snippets/**'
+      - '.github/workflows/snippets-build.yml'
+
+jobs:
+  build-release:
+    name: Release build + correctness tests (excludes RACE_DEMO + perf)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libomp-18-dev cmake ninja-build
+
+      - name: Fetch doctest.h
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/doctest/doctest/v2.4.11/doctest/doctest.h \
+            -o snippets/third_party/doctest.h
+
+      - name: Configure (Release)
+        run: |
+          cmake -S snippets -B snippets/build/release \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-18 \
+            -DCMAKE_CXX_COMPILER=clang++-18
+
+      - name: Build (Release)
+        run: cmake --build snippets/build/release -j
+
+      - name: Test (Release; -LE 'RACE_DEMO|perf')
+        run: |
+          ctest --test-dir snippets/build/release --output-on-failure \
+            -LE 'RACE_DEMO|perf'
+
+  build-tsan:
+    name: TSan + Archer (race-demo + non-race correctness)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (clang + libarcher via libomp-dev)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libomp-18-dev cmake ninja-build llvm-18-dev
+
+      - name: Fetch doctest.h
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/doctest/doctest/v2.4.11/doctest/doctest.h \
+            -o snippets/third_party/doctest.h
+
+      - name: Configure (TSan)
+        run: |
+          cmake -S snippets -B snippets/build/tsan \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DENABLE_TSAN=ON \
+            -DCMAKE_C_COMPILER=clang-18 \
+            -DCMAKE_CXX_COMPILER=clang++-18
+
+      - name: Build (TSan)
+        run: cmake --build snippets/build/tsan -j
+
+      - name: Locate libarcher.so
+        id: archer
+        run: |
+          # Ubuntu's libomp ships libarcher.so under llvm-18/lib.
+          ARCHER=$(dpkg -L libomp5-18 libomp-18-dev 2>/dev/null \
+            | grep -E 'libarcher\.so($|\.[0-9])' | head -1)
+          if [ -z "$ARCHER" ]; then
+            ARCHER=$(find /usr -name 'libarcher.so*' 2>/dev/null | head -1)
+          fi
+          if [ -z "$ARCHER" ]; then
+            echo "::error::libarcher not found" >&2
+            exit 1
+          fi
+          echo "archer_lib=$ARCHER" >> "$GITHUB_OUTPUT"
+          echo "Using libarcher at: $ARCHER"
+
+      - name: Full TSan suite (race-demo + non-race, Archer-annotated)
+        env:
+          OMP_TOOL: enabled
+          OMP_TOOL_LIBRARIES: ${{ steps.archer.outputs.archer_lib }}
+          TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1:ignore_noninstrumented_modules=1"
+        run: |
+          ctest --test-dir snippets/build/tsan --output-on-failure -LE perf
+
+  build-perf:
+    name: Perf lane (false-sharing soft delta)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libomp-18-dev cmake ninja-build
+
+      - name: Fetch doctest.h
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/doctest/doctest/v2.4.11/doctest/doctest.h \
+            -o snippets/third_party/doctest.h
+
+      - name: Configure (Release)
+        run: |
+          cmake -S snippets -B snippets/build/release \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-18 \
+            -DCMAKE_CXX_COMPILER=clang++-18
+
+      - name: Build (Release)
+        run: cmake --build snippets/build/release -j
+
+      # The perf lane is a soft check — assertions are deliberately
+      # noise-tolerant. We continue-on-error so a flaky run on a noisy
+      # GH-hosted runner doesn't block PRs; the regression signal still
+      # surfaces in the CI annotation.
+      - name: Test (perf)
+        continue-on-error: true
+        run: |
+          ctest --test-dir snippets/build/release --output-on-failure -L perf

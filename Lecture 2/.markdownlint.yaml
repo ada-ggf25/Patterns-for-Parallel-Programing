@@ -1,0 +1,13 @@
+# markdownlint config for prose in *.md and Quarto *.qmd narrative sections.
+# Relaxed a few defaults that fight Quarto / technical writing.
+
+default: true
+
+# Quarto source is human-authored; we don't hard-wrap.
+MD013: false
+
+# Allow inline HTML (Quarto content frequently does).
+MD033: false
+
+# Allow first line to not be a top-level heading (Quarto handles titles via YAML).
+MD041: false

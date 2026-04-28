@@ -1,0 +1,157 @@
+#!/bin/bash
+# Rome HPL (High-Performance Linpack) baseline.
+# Compute-bound counterpart to docs/rome-inventory.pbs (STREAM).
+#
+# Target: full Rome node (dual-socket EPYC 7742, 128 physical cores,
+# 8 NUMA domains; NPS=4 per socket; SMT off).
+#
+# Uses the EasyBuild HPL/2.3-foss-2024a binary at
+# /rds/easybuild/icelake/apps/software/HPL/2.3-foss-2024a/bin/xhpl,
+# built with GCC 13.3 + OpenMPI 5.0.3 + OpenBLAS 0.3.27. CX3 only
+# ships HPL builds for `icelake` and `dev`; there is no Rome-specific
+# build, and the HPL Lmod module is not surfaced on Rome compute
+# nodes. The Icelake binary is x86-64-v3 (AVX2) so it runs on Zen 2
+# but is not Zen-tuned. AOCL-BLIS would give ~70-80 % of peak; the
+# Icelake/OpenBLAS build typically reaches 50-60 %. Adequate for a
+# teaching ceiling vs the 4608 GFLOPs theoretical.
+#
+# Process layout: 8 MPI ranks (one per NUMA domain) × 16 OMP threads
+#   (cores per NUMA) = 128 cores. HPL process grid 2 × 4.
+
+#PBS -N rome-hpl
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=8:ompthreads=16
+#PBS -l place=excl
+
+set -euo pipefail
+
+module purge
+module load tools/prod
+# foss/2024a brings in the runtime libs that the Icelake xhpl was
+# linked against (GCC 13.3 stdlibs, OpenMPI 5.0.3, OpenBLAS, FFTW).
+# Don't load numactl/hwloc separately — they get pulled in (and pinned
+# to the right GCCcore version) by foss/2024a. Loading them by name
+# bumps GCCcore to 14.x and breaks PMIx/PRRTE/OpenMPI compatibility.
+module load foss/2024a
+
+XHPL=/rds/easybuild/icelake/apps/software/HPL/2.3-foss-2024a/bin/xhpl
+if [ ! -x "$XHPL" ]; then
+  echo "ERROR: xhpl not found or not executable at $XHPL" >&2
+  exit 1
+fi
+
+cd "$PBS_O_WORKDIR"
+mkdir -p rome-hpl-output
+cd rome-hpl-output
+
+RESULTS="rome-$(hostname -s)-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$RESULTS"
+cd "$RESULTS"
+
+# --- 1. Topology + module provenance --------------------------------------
+{
+  echo "=== hostname ==="
+  hostname
+  echo
+  echo "=== uname -a ==="
+  uname -a
+  echo
+  echo "=== date ==="
+  date
+} > meta.txt
+
+lscpu > lscpu.txt
+numactl --hardware > numactl-hardware.txt
+module list 2>&1 > modules-loaded.txt
+echo "$XHPL" > xhpl-location.txt
+ldd "$XHPL" >> xhpl-location.txt 2>&1 || true
+
+# --- 2. HPL.dat -----------------------------------------------------------
+# N: problem size. 80000 → 80000² × 8 B ≈ 51 GB matrix. Each MPI rank
+#   holds N²/(P*Q) = 6.4 GB; well within memory headroom.
+# NB: block size. 232 is a sensible OpenBLAS default for Zen 2.
+# P × Q = 2 × 4 = 8 MPI ranks. With NPS=4, 8 NUMA domains, this puts
+#   exactly one MPI rank per NUMA — natural placement.
+# PFACT/NBMIN/NDIV/RFACT/BCAST/DEPTH/SWAP: HPL defaults that work well
+#   on x86 systems (per HPL's own tuning notes).
+
+cat > HPL.dat <<'EOF'
+HPLinpack benchmark input file
+PPP-OpenMP course — Rome dual-socket EPYC 7742 baseline
+HPL.out      output file name (if any)
+6            device out (6=stdout,7=stderr,file)
+1            # of problems sizes (N)
+80000        Ns
+1            # of NBs
+232          NBs
+0            PMAP process mapping (0=Row-,1=Column-major)
+1            # of process grids (P x Q)
+2            Ps
+4            Qs
+16.0         threshold
+1            # of panel fact
+2            PFACTs (0=left, 1=Crout, 2=Right)
+1            # of recursive stopping criterium
+4            NBMINs (>= 1)
+1            # of panels in recursion
+2            NDIVs
+1            # of recursive panel fact.
+1            RFACTs (0=left, 1=Crout, 2=Right)
+1            # of broadcast
+1            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)
+1            # of lookahead depth
+1            DEPTHs (>=0)
+2            SWAP (0=bin-exch,1=long,2=mix)
+64           swapping threshold
+0            L1 in (0=transposed,1=no-transposed) form
+0            U  in (0=transposed,1=no-transposed) form
+1            Equilibration (0=no,1=yes)
+8            memory alignment in double (> 0)
+EOF
+
+# --- 3. Run xhpl ----------------------------------------------------------
+export OMP_NUM_THREADS=16
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+# OpenMPI 5.0: one MPI rank per NUMA domain, each rank gets 16 PEs
+# (= cores per NUMA) for its OpenMP team. --bind-to numa makes the
+# rank's threads stay within the NUMA domain → first-touch wins.
+# OpenMPI 5 rejects `--bind-to numa` when `--map-by ... pe=16` is set
+# (the pe= directive already binds to that many cores). Use the
+# implicit core-binding from pe=16; first-touch within a NUMA domain
+# still works because mapping is per-numa.
+mpirun -np 8 \
+  --map-by ppr:1:numa:pe=16 \
+  --report-bindings \
+  "$XHPL" > xhpl.log 2>&1 || true
+
+# --- 4. Summarise ---------------------------------------------------------
+{
+  echo "Rome HPL summary"
+  echo "================"
+  echo "Node: $(hostname)"
+  echo "Date: $(date)"
+  echo "Binary: $XHPL (GCC 13.3 + OpenMPI 5.0.3 + OpenBLAS 0.3.27)"
+  echo "Layout: 8 MPI ranks × 16 OMP threads = 128 cores; 2×4 grid"
+  echo "Problem: N=80000 (≈ 51 GB matrix), NB=232"
+  echo
+  echo "=== HPL result line(s) ==="
+  grep -E "^T/V|^WR|^---|residual" xhpl.log | head -20
+  echo
+  echo "=== Pass/fail ==="
+  grep -E "PASSED|FAILED" xhpl.log | head -5
+
+  gflops=$(grep "^WR" xhpl.log | awk '{print $7}' | head -1)
+  if [ -n "$gflops" ]; then
+    echo
+    echo "Achieved: ${gflops} GFLOPs"
+    peak=4608
+    frac=$(awk -v g="$gflops" -v p="$peak" 'BEGIN{printf "%.2f", g/p}')
+    pct=$(awk  -v g="$gflops" -v p="$peak" 'BEGIN{printf "%.1f", 100*g/p}')
+    echo "Fraction of theoretical peak (${peak} GFLOPs): ${frac} (= ${pct}%)"
+  fi
+} | tee SUMMARY.txt
+
+echo
+echo "=== HPL DONE — results in $PWD ==="

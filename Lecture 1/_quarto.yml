@@ -1,0 +1,10 @@
+project:
+  title: "PPP intro — CX3, modules, PBS, OpenMP, MPI"
+
+execute:
+  freeze: auto
+  echo: true
+  warning: false
+
+# Per-document formats live in cx3-hpc-intro.qmd's YAML so the single source
+# can be rendered independently to beamer or revealjs.

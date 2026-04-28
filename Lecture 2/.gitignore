@@ -1,0 +1,37 @@
+# Build artefacts
+snippets/build/
+slides/*.html
+slides/*_files/
+slides/_partials/
+_freeze/
+
+# Fetched third-party headers (vendored at CI time)
+snippets/third_party/doctest.h
+
+# Python venv + bytecode
+venv/
+__pycache__/
+*.pyc
+
+# CX3-side inventory raw outputs (regenerate as needed)
+docs/rome-inventory-raw/
+
+# Local rendered slides
+slides/*.html
+slides/*_files/
+_freeze/
+
+# Legacy PBS outputs (retained from pre-refresh era)
+*/logs
+*/build
+L02-OpenMPintroduction/hello_world.e*
+L02-OpenMPintroduction/hello_world.o*
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+/.quarto/
+**/*.quarto_ipynb

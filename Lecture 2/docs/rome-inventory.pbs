@@ -1,0 +1,195 @@
+#!/bin/bash
+# Step 0.1 — Rome compute-node inventory + tuned STREAM sweep.
+# Target: full Rome node (dual-socket EPYC 7742, 128 physical cores, 8 NUMA
+# domains; NPS=4 per socket; SMT off — measured 2026-04-24).
+#
+# v3 (2026-04-26): closes the gap to published EPYC 7742 STREAM numbers.
+# AMD + VMware best practice for STREAM bandwidth is *one thread per CCX*
+# (Core Complex), NOT one thread per core. Rome has 16 CCXs per socket =
+# 32 CCXs total, so the canonical STREAM team is 32 threads with
+# OMP_PLACES=ll_caches OMP_PROC_BIND=spread (one place per L3 cache).
+#
+# Changes from v2:
+#   - STREAM_ARRAY_SIZE 400 M → 800 M doubles (~19.2 GB total) — matches
+#     the VMware Cloud Foundation reference.
+#   - Added 32-thread sweep (one thread per CCX) at all binding combos.
+#   - Added 16-thread spread+ll_caches reference (half subscribed).
+#   - Kept the 64- and 128-thread "fully subscribed" runs for comparison.
+#   - Added a Clang-18 build as a sanity check against GCC 13.3.
+
+#PBS -N rome-inventory
+#PBS -l walltime=00:60:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128
+#PBS -l place=excl
+
+set -euo pipefail
+
+module purge
+module load tools/prod GCC/13.3.0 CMake numactl hwloc likwid
+
+cd "$PBS_O_WORKDIR"
+mkdir -p rome-inventory-output
+cd rome-inventory-output
+
+RESULTS="rome-$(hostname -s)-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$RESULTS"
+cd "$RESULTS"
+
+# --- 1. Topology -----------------------------------------------------------
+{
+  echo "=== hostname ==="
+  hostname
+  echo
+  echo "=== uname -a ==="
+  uname -a
+  echo
+  echo "=== date ==="
+  date
+} > meta.txt
+
+lscpu > lscpu.txt
+numactl --hardware > numactl-hardware.txt
+cat /proc/cpuinfo > cpuinfo.txt
+if command -v lstopo >/dev/null 2>&1; then
+  lstopo --of console > lstopo.txt
+fi
+
+# --- 2. Module availability check -----------------------------------------
+{
+  echo "=== Modules currently loaded ==="
+  module list 2>&1
+} > modules-loaded.txt
+
+# --- 3. STREAM benchmark (tuned sweep) ------------------------------------
+# Build STREAM with arrays well above any cache:
+#   STREAM_ARRAY_SIZE=800_000_000 × 3 arrays × 8 bytes ≈ 19.2 GB total —
+#   matches VMware's reference run.
+#
+# -mcmodel=medium is required because static .bss > 2 GB triggers
+#   "relocation truncated to fit: R_X86_64_32S against \`.bss\`"
+#   under the default x86-64 small code model.
+
+STREAM_C="../../stream.c"
+if [ ! -f "$STREAM_C" ]; then
+  STREAM_C=stream.c
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL https://www.cs.virginia.edu/stream/FTP/Code/stream.c -o stream.c
+  else
+    wget -q https://www.cs.virginia.edu/stream/FTP/Code/stream.c -O stream.c
+  fi
+fi
+
+# Default build: GCC 13.3.
+gcc -O3 -march=znver2 -mavx2 -mcmodel=medium -fopenmp \
+    -DSTREAM_ARRAY_SIZE=800000000 -DNTIMES=20 \
+    "$STREAM_C" -o stream_gcc.exe 2> stream-build-gcc.log
+
+# Companion build: Clang 18 (closest available substitute for AOCC).
+module load Clang/18.1.8-GCCcore-13.3.0 || true
+if command -v clang >/dev/null 2>&1; then
+  clang -O3 -march=znver2 -mavx2 -mcmodel=medium -fopenmp \
+        -DSTREAM_ARRAY_SIZE=800000000 -DNTIMES=20 \
+        "$STREAM_C" -o stream_clang.exe 2> stream-build-clang.log || true
+fi
+
+# Helper: run STREAM with one (PROC_BIND, PLACES) combo at thread count $1.
+# Prefix in $2 selects the binary (gcc | clang).
+run_stream() {
+  local p="$1" prefix="$2" bind="$3" places="$4"
+  local tag="${prefix}-${p}-bind-${bind}-places-${places}"
+  local out="stream-${tag}.txt"
+  echo "=== STREAM ${prefix} at ${p} threads, OMP_PROC_BIND=${bind}, OMP_PLACES=${places} ==="
+  local exe="./stream_${prefix}.exe"
+  if [ ! -x "$exe" ]; then return 0; fi
+  OMP_NUM_THREADS=$p OMP_PROC_BIND=$bind OMP_PLACES=$places "$exe" > "$out" 2>&1
+}
+
+# --- v3 focused tests: one thread per CCX recipe ---
+# Rome has 32 CCXs total (16 per socket). spread+ll_caches with 32 threads
+# = exactly one thread per CCX = AMD's recommended STREAM configuration.
+for compiler in gcc clang; do
+  [ -x "./stream_${compiler}.exe" ] || continue
+  echo "### ${compiler} build ###"
+
+  # The CCX recipe.
+  run_stream 32  "$compiler" spread ll_caches      # **one per CCX (key)**
+  run_stream 32  "$compiler" close  ll_caches      # one per CCX, single socket
+  run_stream 32  "$compiler" spread cores          # 32 cores spread; comparison
+  run_stream 16  "$compiler" spread ll_caches      # half subscribed
+
+  # Core-saturated comparisons.
+  run_stream 64  "$compiler" close  cores          # one socket
+  run_stream 64  "$compiler" spread cores          # spread across both sockets
+  run_stream 128 "$compiler" spread cores          # full node
+  run_stream 128 "$compiler" close  cores          # full node, close binding
+
+  # Lower-bound references.
+  run_stream 1   "$compiler" close  cores
+  run_stream 16  "$compiler" close  cores          # one NUMA domain
+done
+
+# numactl --interleave=all reference at 128 threads, GCC build.
+echo "=== STREAM at 128 threads, numactl --interleave=all (gcc) ==="
+OMP_NUM_THREADS=128 OMP_PROC_BIND=close OMP_PLACES=cores \
+  numactl --interleave=all ./stream_gcc.exe > stream-gcc-128-numactl-interleave.txt 2>&1
+
+# --- 4. Pick the best Triad per thread count + summarise ------------------
+{
+  echo "Rome STREAM-Triad sweep summary (v3)"
+  echo "===================================="
+  echo "Node: $(hostname)"
+  echo "Date: $(date)"
+  echo "Array size per buffer: 800 M doubles ≈ 6.4 GB; total RSS ≈ 19.2 GB."
+  echo "STREAM emits its rate column in MB/s; we divide by 1000 to report GB/s."
+  echo
+  echo "Threads × compiler | best Triad (GB/s) | best (PROC_BIND, PLACES)"
+  echo "-------------------|-------------------|------------------------"
+  for compiler in gcc clang; do
+    [ -x "./stream_${compiler}.exe" ] || continue
+    for p in 1 16 32 64 128; do
+      best_triad_gbs="0"
+      best_combo="(none)"
+      for f in stream-${compiler}-${p}-*.txt; do
+        [ -f "$f" ] || continue
+        triad_mbs=$(grep '^Triad:' "$f" | awk '{print $2}' | head -1)
+        if [ -z "$triad_mbs" ]; then continue; fi
+        triad_gbs=$(awk -v m="$triad_mbs" 'BEGIN{printf "%.2f", m/1000.0}')
+        better=$(awk -v a="$triad_gbs" -v b="$best_triad_gbs" 'BEGIN{print (a+0 > b+0)}')
+        if [ "$better" = "1" ]; then
+          best_triad_gbs="$triad_gbs"
+          best_combo="$f"
+        fi
+      done
+      printf "  %3s threads %-6s | %17s | %s\n" "$p" "$compiler" "$best_triad_gbs" "$best_combo"
+    done
+  done
+  echo
+  echo "Per-file Triad readings (all combos), in GB/s:"
+  echo "----------------------------------------------"
+  for f in stream-*.txt; do
+    triad_mbs=$(grep '^Triad:' "$f" | awk '{print $2}' | head -1)
+    if [ -n "$triad_mbs" ]; then
+      triad_gbs=$(awk -v m="$triad_mbs" 'BEGIN{printf "%.2f", m/1000.0}')
+    else
+      triad_gbs="?"
+    fi
+    printf "  %-65s Triad=%s GB/s\n" "$f" "$triad_gbs"
+  done
+  echo
+  echo "Copy/Scale/Add/Triad for the v3 winners (GB/s):"
+  echo "-----------------------------------------------"
+  for f in stream-*.txt; do
+    [ -f "$f" ] || continue
+    if ! grep -q '^Copy:' "$f"; then continue; fi
+    copy=$(grep '^Copy:'  "$f" | awk '{printf "%.2f", $2/1000.0}')
+    scale=$(grep '^Scale:' "$f" | awk '{printf "%.2f", $2/1000.0}')
+    add=$(grep '^Add:'   "$f" | awk '{printf "%.2f", $2/1000.0}')
+    triad=$(grep '^Triad:' "$f" | awk '{printf "%.2f", $2/1000.0}')
+    printf "  %-65s C=%s S=%s A=%s T=%s\n" "$f" "$copy" "$scale" "$add" "$triad"
+  done
+} > SUMMARY.txt
+
+cat SUMMARY.txt
+
+echo
+echo "=== INVENTORY DONE — results in $PWD ==="

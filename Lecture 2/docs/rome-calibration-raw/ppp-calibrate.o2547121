@@ -1,0 +1,17 @@
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Configuring done (5.0s)
+-- Generating done (1.5s)
+-- Build files have been written to: /rds/general/user/ggorman/home/projects/ppp-openmp-calibration/build
+gmake[2]: *** [CMakeFiles/mandelbrot_tasks.dir/build.make:93: CMakeFiles/mandelbrot_tasks.dir/assignment-2/mandelbrot_serial.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:160: CMakeFiles/mandelbrot_tasks.dir/all] Error 2
+gmake: *** [Makefile:91: all] Error 2
+
+====================================
+CPU Time used: 00:00:00
+CPU Percent: 0%
+Memory usage: 0b
+Approx Power usage: 0.0
+Walltime usage: 00:00:14
+
+====================================

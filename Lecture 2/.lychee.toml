@@ -1,0 +1,23 @@
+# lychee link-checker config.
+
+# Rate-limit the OpenMP spec so CI doesn't thrash them.
+max_concurrency = 4
+timeout = 20
+retry_wait_time = 3
+max_retries = 2
+
+# Ignore anchors — fine for now; revisit once slides are stable.
+include_fragments = false
+
+# Skip localhost / file URLs.
+exclude_all_private = true
+
+# Accept 200/204/206 (GitHub sometimes returns 204 on HEAD).
+accept = [200, 204, 206, 301, 302]
+
+# Patterns to exclude entirely.
+exclude = [
+  "mailto:.*",
+  "^file://",
+  "^https?://localhost",
+]

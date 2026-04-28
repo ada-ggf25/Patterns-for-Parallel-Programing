@@ -1,0 +1,10 @@
+project:
+  title: "PPP-OpenMP — Shared-memory programming with OpenMP"
+
+execute:
+  freeze: auto
+  echo: true
+  warning: false
+
+# Per-document formats live in each slides/*.qmd YAML header so the four daily
+# decks can be rendered independently.

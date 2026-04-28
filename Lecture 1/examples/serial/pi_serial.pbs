@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N pi_serial
+#PBS -l walltime=00:10:00
+#PBS -l select=1:ncpus=1:mem=4gb:cpu_type=rome
+# cpu_type=rome pins the job to an AMD EPYC 7742 node (128c, 8-NUMA).
+# Dropping this selector would let the scheduler place you on either
+# rome or icelake (Intel Xeon 8358), making benchmark numbers non-comparable
+# between students. Swap to cpu_type=icelake if you want the Intel tier.
+
+# Submit from the examples/ directory:
+#   cd ic-hpc-intro/examples && qsub serial/pi_serial.pbs
+
+cd $PBS_O_WORKDIR
+
+ml tools/prod
+ml GCC
+
+./build/serial/pi_serial

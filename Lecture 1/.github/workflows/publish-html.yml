@@ -1,0 +1,42 @@
+name: Publish HTML deck to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render RevealJS HTML
+        run: quarto render cx3-hpc-intro.qmd --to revealjs
+
+      - name: Stage site for Pages
+        run: |
+          mkdir -p _site
+          cp cx3-hpc-intro.html _site/index.html
+          cp cx3-hpc-intro.html _site/cx3-hpc-intro.html
+          if [ -d cx3-hpc-intro_files ]; then cp -r cx3-hpc-intro_files _site/; fi
+          if [ -d images ]; then cp -r images _site/; fi
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true

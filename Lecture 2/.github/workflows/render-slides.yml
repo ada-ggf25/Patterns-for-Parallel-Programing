@@ -1,0 +1,70 @@
+name: Render landing page + slides
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'slides/**'
+      - 'snippets/**'
+      - '_quarto.yml'
+      - '.github/workflows/render-slides.yml'
+  workflow_dispatch:
+
+# Allow only one in-flight Pages deployment; cancel pending older
+# runs but never interrupt one already deploying.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (for build_partials.py)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Generate slide partials from snippets
+        # slides/_partials/ is gitignored; build_partials.py emits
+        # one .qmd per .cpp + one per `// snippet-begin: <name>` /
+        # `// snippet-end: <name>` region, which the slide
+        # `{{< include >}}` shortcodes consume.
+        run: python3 slides/tools/build_partials.py
+
+      - name: Render landing page (HTML) + decks (RevealJS)
+        # Each .qmd carries its own format in its YAML header — the
+        # landing page renders as HTML, the three decks as RevealJS.
+        run: |
+          for qmd in \
+              slides/index.qmd \
+              slides/day2.qmd \
+              slides/day3.qmd \
+              slides/day4.qmd; do
+            quarto render "$qmd"
+          done
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: slides
+
+  deploy:
+    needs: render
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

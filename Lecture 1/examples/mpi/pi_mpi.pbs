@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N pi_mpi
+#PBS -l walltime=00:10:00
+#PBS -l select=1:ncpus=16:mem=4gb:mpiprocs=16:cpu_type=rome
+# cpu_type=rome pins the job to an AMD EPYC 7742 node (128c, 8-NUMA) so
+# every student's 16-rank timing is comparable. Drop the selector only if
+# you explicitly want cross-architecture comparisons; use cpu_type=icelake
+# for the Intel Xeon 8358 tier (64c, 2-NUMA).
+
+# Submit from the examples/ directory:
+#   cd ic-hpc-intro/examples && qsub mpi/pi_mpi.pbs
+#
+# Single-node MPI (16 ranks on one node) keeps the job in the small/medium
+# queues and starts quickly. For a 2-node demo, change the select line to:
+#   #PBS -l select=2:ncpus=64:mem=4gb:mpiprocs=64
+# which routes through v1_capability24/48 — pre-submit, it will queue.
+
+cd $PBS_O_WORKDIR
+
+ml tools/prod
+ml GCC OpenMPI
+
+mpiexec ./build/mpi/pi_mpi

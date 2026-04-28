@@ -1,0 +1,42 @@
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Configuring done (5.0s)
+-- Generating done (0.1s)
+-- Build files have been written to: /rds/general/user/ggorman/home/projects/ppp-openmp-calibration/build
+[ 90%] Built target integrate
+[100%] Linking CXX executable stencil
+[100%] Built target stencil
+=== CALIBRATION RESULTS ===
+Node: cx3-14-7
+Date: Fri 24 Apr 21:46:01 BST 2026
+
+--- integrate ---
+  1 threads: real=0m1.949s  output="integral = 0.817014911522 "
+  16 threads: real=0m1.953s  output="integral = 0.817014911522 "
+  128 threads: real=0m1.952s  output="integral = 0.817014911522 "
+
+--- mandelbrot_for ---
+  1 threads: real=0m13.430s  output="outside = 20803640 area = 7.489310 "
+  16 threads: real=0m13.432s  output="outside = 20803640 area = 7.489310 "
+  128 threads: real=0m13.435s  output="outside = 20803640 area = 7.489310 "
+
+--- mandelbrot_tasks ---
+  1 threads: real=0m13.135s  output="outside = 20803640 area = 7.489310 "
+  16 threads: real=0m13.136s  output="outside = 20803640 area = 7.489310 "
+  128 threads: real=0m13.150s  output="outside = 20803640 area = 7.489310 "
+
+--- stencil ---
+  1 threads: real=0m1.483s  output="checksum = 3.234174e+05 "
+  16 threads: real=0m1.485s  output="checksum = 3.234174e+05 "
+  128 threads: real=0m1.555s  output="checksum = 3.234174e+05 "
+
+DONE
+
+====================================
+CPU Time used: 00:02:53
+CPU Percent: 100%
+Memory usage: 153620kb
+Approx Power usage: 0.0004
+Walltime usage: 00:03:18
+
+====================================

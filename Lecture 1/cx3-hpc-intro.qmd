@@ -1,0 +1,1078 @@
+---
+title: "Parallel Patterns in Programming"
+subtitle: "CX3, modules, PBS, OpenMP, MPI"
+author: "Gerard Gorman"
+institute: "Department of Earth Science and Engineering — Imperial College London"
+date: today
+date-format: long
+format:
+  beamer:
+    aspectratio: 169
+    theme: Madrid
+    colortheme: seahorse
+    fonttheme: professionalfonts
+    pdf-engine: lualatex
+    highlight-style: github
+    code-block-font-size: \scriptsize
+    slide-level: 2
+    toc: false
+    include-in-header:
+      text: |
+        % Show only the section title on \section divider frames
+        % (suppress Madrid's default "Section N" line).
+        \setbeamertemplate{section page}{%
+          \begin{centering}
+            \begin{beamercolorbox}[sep=12pt,center]{part title}
+              \usebeamerfont{section title}\insertsectionhead\par
+            \end{beamercolorbox}
+          \end{centering}
+        }
+  revealjs:
+    theme: simple
+    slide-number: c/t
+    incremental: false
+    code-overflow: wrap
+    code-block-height: 600px
+    highlight-style: github
+    smaller: true
+    controls: true
+---
+
+## Three weeks of parallel programming
+
+**This week — HPC intro & OpenMP** (Mon 27 Apr – Fri 1 May)
+
+- **Today:** Introduction to HPC on CX3 — modules, PBS, plus illustrative OpenMP and MPI examples (this deck).
+- Rest of the week: OpenMP in depth — parallel regions, data sharing, work sharing, reductions.
+- **OpenMP assessment due 16:00 Friday.**
+
+**Week 2 — MPI** (Mon 4 May – Fri 8 May)
+
+- Distributed-memory parallelism with MPI.
+- Lecturer: **Prof Stephen Neethling**.
+
+**Week 3 — MPI continued** (Mon 11 May – Fri 15 May)
+
+- Further MPI topics and assessment.
+- Lecturer: **Prof Stephen Neethling**.
+
+## Today's session
+
+A whirlwind tour so you can build, submit, and parallelise on CX3 by the end of the afternoon.
+
+1. Access to **CX3** — login, filesystems, environment **modules**.
+2. **PBS** job submission — script anatomy, queues, monitoring.
+3. The running example: $\pi$ by numerical integration.
+4. **OpenMP** — shared-memory parallelism (illustrative).
+5. **MPI** — distributed-memory parallelism (illustrative).
+6. Where to go next — pointers into this week's OpenMP work.
+
+The OpenMP and MPI material today is illustrative — we'll go much deeper into OpenMP for the rest of the week, and Prof Neethling will cover MPI properly in weeks 2–3.
+
+## Learning outcomes
+
+By the end of this session you will be able to:
+
+- Log in to the Imperial **CX3** HPC cluster.
+- Load the right **environment modules** for a parallel C++ build.
+- Write, submit, and monitor a **PBS** job script.
+- Parallelise a simple serial C++ program with **OpenMP** and run it on CX3.
+- Parallelise the same program with **MPI** and run it on CX3.
+
+No prior HPC experience assumed; you should be comfortable with C++ basics, a command line, and a text editor.
+
+## Our running example — $\pi$ by numerical integration
+
+$$
+\pi \;\approx\; \frac{1}{N}\sum_{i=1}^{N}\frac{4}{1 + \left(\frac{i-\tfrac{1}{2}}{N}\right)^2}
+$$
+
+- Embarrassingly parallel: every term is independent.
+- Accuracy improves with $N$; we will use $N = 10^9$.
+- We will implement it in three forms: serial → OpenMP → MPI.
+- Same algorithm, same answer. The parallelisation is all in how we split the sum.
+
+# Access to CX3
+
+## What is CX3?
+
+- Imperial College's general-purpose HPC cluster (CX3 = *compute cluster 3*).
+- Roughly 600 compute nodes + a handful of login nodes.
+- Two CPU architectures mixed in one cluster:
+  - **AMD EPYC 7742** (Rome) — 128 cores / node.
+  - **Intel Xeon 8358** (Ice Lake) — 64 cores / node.
+- One shared parallel filesystem (RDS) visible from every node.
+- Job scheduler: **PBS Professional**.
+
+::: {.callout-tip title="Deep dive: Imperial College Research Computing Services"}
+* [https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/service-offering/hpc/](https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/service-offering/hpc/)
+* [https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/cluster-specification/](https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/cluster-specification/)
+:::
+
+## Shared resource, strict rules
+
+- Login nodes are **shared** with everyone else — no heavy work there.
+- Compute nodes are **allocated** by the scheduler; you cannot ssh to them directly.
+- The right path is always: *log in → write a PBS script → submit with `qsub`*.
+- Long, memory-intensive, or multi-threaded work on a login node **will be killed** by admins.
+
+::: {.callout-tip title="Deep dive: PBS"}
+* [https://www.openpbs.org/](https://www.openpbs.org/)
+* SLURM is a common alternative found on many HPC systems - [https://github.com/schedmd/slurm](https://github.com/schedmd/slurm)
+:::
+
+## Connecting: plain ssh
+
+```bash
+ssh myusername@login.cx3.hpc.ic.ac.uk
+```
+
+- `login.cx3.hpc.ic.ac.uk` is a **load balancer** over four login shards.
+- You will be prompted for your **Imperial College password** (the same one you use for email / Outlook).
+- First connection shows a host-key fingerprint; accept it (`yes`).
+
+## Authentication: password only
+
+- Public-key authentication is **disabled** on RCS login nodes.
+- `ssh-copy-id` will run without error but the next `ssh` still prompts for a password.
+- Use `ssh` multiplexing (`ControlMaster`) if you hate typing the password repeatedly:
+
+```bash
+# ~/.ssh/config
+Host login.cx3.hpc.ic.ac.uk
+    ControlMaster auto
+    ControlPath  ~/.ssh/cm-%r@%h:%p
+    ControlPersist 1h
+```
+
+## Before you connect — network
+
+- **On campus:** connect to `Imperial-WPA` wifi, then ssh works directly.
+- **Off campus:** use Imperial's **Zscaler / Unified Access** VPN; otherwise the cluster is unreachable from the open internet.
+- Eduroam on campus also works.
+- If you see `ssh: connect to host …: Network is unreachable`, it's a VPN/wifi problem, not the cluster.
+
+## Login shards and CPU arch
+
+| Shard | CPU | Why you'd care |
+|---|---|---|
+| `login-b`, `login-c` | AMD Rome | Build-host for Rome compute nodes |
+| `login-ai`, `login-bi` | Intel Ice Lake | Build-host for Ice Lake compute nodes |
+
+- The load balancer picks one of them at random — you may land on Rome today and Ice Lake tomorrow.
+- For this course it doesn't matter: GCC's binary-portable defaults work on both.
+- If you later do performance work with `-march=native`, pin yourself to a specific shard by name.
+- The **compute nodes** are also a mix of Rome and Ice Lake — we'll come back to this when we pick a node for our benchmark (see "Pinning the host class").
+
+## The shared filesystem (RDS)
+
+| Env var | Path | Quota | Retention |
+|---|---|---|---|
+| `$HOME` | `/rds/general/user/$USER/home` | 1 TB | permanent |
+| `$EPHEMERAL` | `/rds/general/user/$USER/ephemeral` | 10 TB | **wiped after 30 days** |
+
+- `$HOME` is visible from every login node *and* every compute node — same files everywhere.
+- `$EPHEMERAL` is for big intermediate results you don't want to count against your home quota.
+- Check your usage: `quota -s`.
+
+## Local scratch on the compute node
+
+- `$TMPDIR` exists only **while your job is running**.
+- Lives on the compute node's fast local disk.
+- Use it for I/O-heavy workloads; stage files in at the start of the job, copy results out at the end.
+- For this course's examples we are CPU-bound, not I/O-bound, so we'll ignore `$TMPDIR`.
+
+# Environment modules
+
+## Why modules?
+
+- A cluster has **hundreds** of compilers, libraries, MPIs, Python versions…
+- They can't all be on your `$PATH` at once — they would clash.
+- Solution: **environment modules** (Lmod). Load only what you need, per session.
+- Think of `module load` as "put this software on my PATH for now".
+
+## Lmod basics
+
+`ml` is a short alias for `module`. Use either.
+
+| Command | What it does |
+|---|---|
+| `ml av` | list every module currently visible |
+| `ml ov` | one-line overview |
+| `ml spider <keyword>` | search across **all** modules (even hidden ones) |
+| `ml <name>` | load a module |
+| `ml unload <name>` | unload one |
+| `ml purge` | unload *everything* |
+| `ml` | list what's loaded |
+
+## Finding the right module
+
+```bash
+# Is there an MPI?  Search broadly.
+$ ml spider mpi
+
+# What versions of GCC are installed?
+$ ml spider GCC
+```
+
+- `ml spider` finds modules even when they depend on another module (`tools/prod`) that is not loaded.
+- `ml av` only shows the ones ready to load *right now*.
+
+## `tools/prod` — the gateway
+
+```bash
+$ ml tools/prod
+```
+
+- Required to make the **full software catalogue** visible.
+- Every `SciPy-bundle`, `R-bundle-ICL`, newer GCC, etc. lives behind this switch.
+- Load it first, then load whatever else you need.
+
+## Compiler + MPI for this course
+
+```bash
+# OpenMP (just a compiler):
+ml tools/prod
+ml GCC
+
+# MPI (compiler + MPI library):
+ml tools/prod
+ml GCC OpenMPI
+```
+
+- `GCC` pulls a modern `g++` onto your PATH (has `-fopenmp` baked in).
+- `GCC OpenMPI` additionally gives you `mpicxx`, `mpiexec`, and the MPI headers.
+- **`mpirun` / `mpiexec` are not on the default PATH** until you load an MPI.
+
+## Swapping versions
+
+```bash
+$ ml                          # what is loaded
+$ ml switch GCC/13.3.0 GCC/14.2.0
+$ ml                          # confirm
+```
+
+- Safer than `unload` + `load` because Lmod checks dependencies for you.
+
+## Purging and starting fresh
+
+```bash
+$ ml purge
+$ ml                          # No modules loaded
+$ ml tools/prod GCC OpenMPI
+```
+
+- Purge at the top of a PBS script if you want a known-clean environment.
+
+## Don't bake modules into `.bashrc`
+
+- Tempting: `ml GCC` in `~/.bashrc` so it's always there.
+- **Don't.** Different projects need different combinations; login-node `.bashrc` conflicts will bite you inside PBS jobs.
+- Load modules explicitly **in each PBS script** — reproducible and self-documenting.
+
+## Typical combos you'll see
+
+- `ml tools/prod GCC` — serial C/C++ with `g++ -O3`.
+- `ml tools/prod GCC CMake` — add CMake for multi-target builds.
+- `ml tools/prod GCC OpenMPI` — MPI C/C++.
+- `ml tools/prod GCC OpenMPI CMake` — our examples in this course.
+
+# PBS — the job scheduler
+
+## First rule: no heavy work on login nodes
+
+- The MOTD on login says so. Admins enforce it.
+- "Heavy" = uses multiple cores for more than a minute, or more than ~4 GB memory, or hits the disk hard.
+- Why: 200 students all compiling at once on the same login node = nobody gets anything done.
+- The correct channel is **always** PBS.
+
+## The resource manager
+
+PBS Pro does five things:
+
+1. Tracks which compute nodes are free.
+2. Sorts incoming requests into **queues** by size/time.
+3. Starts your job when matching resources become free.
+4. Monitors it while it runs.
+5. Captures stdout/stderr into log files.
+
+Your half of the contract: tell PBS **exactly** what you need — cores, memory, walltime.
+
+## Anatomy of a job script
+
+```bash
+#!/bin/bash
+#PBS -N my_job
+#PBS -l walltime=00:30:00
+#PBS -l select=1:ncpus=8:mem=8gb
+
+cd $PBS_O_WORKDIR
+
+ml tools/prod
+ml GCC
+
+./my_program
+```
+
+A PBS script is a normal bash script plus a block of `#PBS` comments at the top.
+
+## The key `#PBS` directives
+
+| Directive | Meaning |
+|---|---|
+| `-N jobname` | Name shown in `qstat` |
+| `-l walltime=HH:MM:SS` | Max wall-clock time before PBS kills the job |
+| `-l select=N:ncpus=C:mem=Xgb` | N *chunks* (≈ nodes), each with C CPUs and X GB RAM |
+| `-l select=N:…:ompthreads=C` | Extra: set `OMP_NUM_THREADS` inside the job |
+| `-l select=N:…:mpiprocs=C` | Extra: number of MPI ranks per chunk |
+| `-o path`, `-e path` | Redirect stdout/stderr log files |
+
+## Requesting resources — examples
+
+* Single serial program, 1 core, 4 GB, up to 30 min:
+```bash
+#PBS -l walltime=00:30:00
+#PBS -l select=1:ncpus=1:mem=4gb:cpu_type=rome
+```
+
+* OpenMP on one node, 8 threads, 8 GB, up to 1 h:
+```bash
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=8:mem=8gb:ompthreads=8:cpu_type=rome
+```
+
+* MPI, 16 ranks on one node:
+```bash
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=16:mem=8gb:mpiprocs=16:cpu_type=rome
+```
+
+::: {.callout-warning}
+Under-request and your job is killed. Over-request and it queues for longer.
+:::
+
+## Pinning the host class — `cpu_type`
+
+CX3 compute nodes come in two flavours:
+
+| `cpu_type` | Hardware | Cores / node |
+|---|---|---:|
+| `rome` | AMD EPYC 7742 (Zen2) | 128 |
+| `icelake` | Intel Xeon Platinum 8358 | 64 |
+
+- Without `cpu_type=...`, the scheduler picks whichever is free. Two runs of the *same* benchmark can land on different hardware and differ by ~15–20 % — not a real signal, just noise.
+- **For this course we pin `cpu_type=rome`** — there are ~300 rome nodes vs ~80 icelake, so queues start quickly even with a full class submitting at once.
+- Swap to `cpu_type=icelake` only if you specifically want the Intel tier.
+
+## `pbsnodes` - list all nodes and their status
+
+See what's free right now:
+
+```bash
+pbsnodes -a | awk '/^$/{f=0} /state = free/{f=1} \
+                   /cpu_type/ && f {print $3; f=0}' | sort | uniq -c
+```
+
+## `$PBS_O_WORKDIR` — the CWD trap
+
+- When your job starts, its **current directory is `$HOME`**, not the directory you submitted from.
+- This breaks `./my_program input.dat` because `input.dat` isn't in `$HOME`.
+- Every PBS script should start with:
+
+```bash
+cd $PBS_O_WORKDIR
+```
+
+`$PBS_O_WORKDIR` is set by PBS to the directory you ran `qsub` in.
+
+## Log files — read them
+
+After `qsub my_job.pbs`:
+
+- `my_job.o<jobid>` — stdout + PBS summary (start/end time, CPU/mem used).
+- `my_job.e<jobid>` — stderr.
+
+**Read them even when everything looks fine.** Silent failures, out-of-memory kills, and wrong-answer bugs usually announce themselves here.
+
+## Submit, monitor, cancel
+
+```bash
+$ qsub my_job.pbs
+7315932.pbs-7
+
+$ qstat -u $USER              # your jobs
+$ qstat 7315932.pbs-7         # one job
+
+$ qdel 7315932.pbs-7          # cancel
+```
+
+Columns to watch: `S` (state), `Req'd Memory`, `Req'd Time`, `Elap Time`.
+
+## Job states (the `S` column)
+
+| State | Meaning |
+|---|---|
+| `Q` | Queued, waiting for resources |
+| `R` | Running |
+| `H` | Held (admin or dependency) |
+| `E` | Exiting (finishing up) |
+| `F` | Finished |
+
+If a job is stuck in `Q` for hours, either the cluster is busy or your resource ask is too large.
+
+## Interactive jobs
+
+```bash
+$ qsub -I -l select=1:ncpus=2:mem=8gb -l walltime=02:00:00
+qsub: waiting for job … to start
+qsub: job … ready
+
+[user@cx3-… ~]$
+```
+
+- Gives you a live bash shell on a compute node.
+- Perfect for debugging, trying commands interactively, small compile jobs.
+- Still counts against your quota; still has a walltime.
+
+## Queue picks for this course
+
+| Demo | Queue you'll land in | Tip |
+|---|---|---|
+| Serial Pi | `v1_small24` / `v1_small72` | Fine; small-queue traffic is fast for short jobs |
+| OpenMP on 1 node (≤64c) | `v1_medium72` | Moves quickly |
+| MPI on 1 node (16–64c) | `v1_medium72` | Avoid capability queues until needed |
+| Interactive shell | `v1_interactive` | Usually empty |
+
+You don't pick the queue yourself — PBS routes based on your `-l` line.
+
+## Common mistakes
+
+- **Missing `cd $PBS_O_WORKDIR`** → "file not found" at runtime.
+- **Missing `ml GCC`** → `g++: command not found`.
+- **`mpiexec` without `ml OpenMPI`** → `mpiexec: command not found`.
+- **Missing or mismatched `ompthreads` vs `ncpus`** → wrong thread count; wastes cores or over-subscribes.
+- **Over-optimistic walltime** → job killed mid-run.
+
+## What speedup should be expect?
+
+**Amdahl's law**: if fraction $B$ of the program is serial, the speedup with $N$ cores is
+
+$$
+\mathrm{Speedup}(N) = \frac{1}{B + (1-B)/N}
+$$
+
+::: {.callout-note icon=false}
+If 10 % of your code is serial, max speedup is **10×** — even with infinite cores.
+:::
+
+- To be worth the effort of parallelization, the parallel fraction has to dominate.
+- Pi by integration is *embarrassingly parallel* — every term in the sum is independent, so $B \approx 0$. A best-case scenario - most cases will have some dependencies between steps which force some serialization. 
+
+## Hands-on — submit the serial Pi
+
+```bash
+ssh myusername@login.cx3.hpc.ic.ac.uk
+git clone <this-repo> ic-hpc-intro
+cd ic-hpc-intro/examples
+
+ml tools/prod GCC CMake
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+
+qsub serial/pi_serial.pbs
+qstat -u $USER
+# wait until state = F, then:
+cat pi_serial.o*
+```
+
+Goal: see `pi=3.141592653…` and the wall-time of ~10 s for $N = 10^9$.
+
+# OpenMP on CX3
+
+## Shared memory parallelism
+
+- OpenMP parallelises a program **within one compute node**.
+- All threads share the same address space — they can read and write the same variables.
+- Pros:
+  - Often straightforward to get *satisfactory* speedup
+  - Portable.
+- Cons:
+  - Shared memory systems only (ie single node).
+  - Functional portability $\ne$ performance portable.
+
+## OpenMP directive: `parallel`
+
+```cpp
+#include <iostream>
+#include <omp.h>
+
+int main() {
+    #pragma omp parallel
+    {
+        std::cout << "Hello from thread " << omp_get_thread_num()
+                  << " of " << omp_get_num_threads() << '\n';
+    }
+}
+```
+
+- Every line inside the `{ … }` runs on every thread.
+- Number of threads comes from `OMP_NUM_THREADS` at runtime.
+
+## The fork-join model
+
+```
+  [master thread running serially]
+    #pragma omp parallel  <-- fork N threads
+    { 
+    |---+---+---+---+ 
+    |   |   |   |   |
+    |   |   |   |   |     <-- do work in parallel
+    |   |   |   |   |
+    |---+---+---+---+
+    }                     <-- join back to master
+  [master continues serially]
+```
+
+- Serial code runs on one (master) thread.
+- A `#pragma omp parallel` region forks a team.
+
+## OpenMP directive: `for`
+
+```cpp
+#pragma omp parallel for
+for (int i = 0; i < n; ++i) {
+    a[i] = b[i] + c[i];
+}
+```
+
+- OpenMP divides the iterations of the loop across the team.
+- No explicit index-juggling; each thread gets a chunk of `i`.
+- Combines `parallel` + `for` into one directive (common shortcut).
+
+## OpenMP clause: `reduction`
+
+Summing across threads naïvely has a **data race** on the accumulator. Fix:
+
+```cpp
+double sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+for (long long i = 1; i <= n; ++i) {
+    sum += f(i);
+}
+```
+
+- Every thread gets its own private `sum` variable; `+` operator combines them into the master thread.
+- OpenMP `reduction` supports operators `+ * & | && || min max` and others.
+
+## Variable scoping
+
+| Clause | Meaning |
+|---|---|
+| `shared(x)` | all threads see the same `x` (default for globals) |
+| `private(x)` | each thread gets its own uninitialised copy |
+| `firstprivate(x)` | each thread gets its own copy, initialised from the master's value |
+| `reduction(op:x)` | private + combined at the end |
+
+::: {.callout-warning}
+Default is shared. A **race condition** is when two threads read-modify-write the same variable without coordination: updates get lost and the result depends on thread timing, so the program is non-deterministic (works once, fails the next run). Race conditions typically happen when you forget a variable should have been private.
+:::
+
+## Pi — serial reference
+
+```cpp
+#include <iostream>
+#include <iomanip>
+int main() {
+    const long long n = 1'000'000'000LL;
+    const double w = 1.0 / static_cast<double>(n);
+    double sum = 0.0;
+    for (long long i = 1; i <= n; ++i) {
+        const double x = w * (static_cast<double>(i) - 0.5);
+        sum += 4.0 / (1.0 + x * x);
+    }
+    const double pi = w * sum;
+    std::cout << std::setprecision(15) << "pi=" << pi << '\n';
+}
+```
+
+## Pi — OpenMP version
+
+```cpp
+ // ...
+#include <omp.h>
+
+int main() {
+    // ...
+
+    #pragma omp parallel for reduction(+:sum)           // <-- only change
+    for (long long i = 1; i <= n; ++i) {
+        const double x = w * (static_cast<double>(i) - 0.5);
+        sum += 4.0 / (1.0 + x * x);
+    }
+
+    // ...
+}
+```
+
+## Building — plain `g++` or CMake
+
+Command-line:
+
+```bash
+g++ -O3 -fopenmp pi_openmp.cpp -o pi_openmp
+```
+
+CMake (what the repo uses):
+
+```cmake
+find_package(OpenMP REQUIRED COMPONENTS CXX)
+add_executable(pi_openmp pi_openmp.cpp)
+target_link_libraries(pi_openmp PRIVATE OpenMP::OpenMP_CXX)
+```
+
+`find_package(OpenMP REQUIRED)` pulls in the right `-fopenmp` flag for your compiler, and fails if OpenMP is missing.
+
+## PBS for OpenMP — `ompthreads`
+
+```bash
+#!/bin/bash
+#PBS -N pi_openmp
+#PBS -l walltime=00:10:00
+#PBS -l select=1:ncpus=8:mem=4gb:ompthreads=8:cpu_type=rome
+
+cd $PBS_O_WORKDIR
+ml tools/prod
+ml GCC OpenMPI        # OpenMPI also brings lstopo/numactl onto PATH
+./build/openmp/pi_openmp
+```
+
+- `ncpus=8` — give me 8 cores on one node.
+- `ompthreads=8` — set `OMP_NUM_THREADS=8` inside the job.
+- **Default:** (`ompthreads = ncpus`) — one thread per allocated core.
+- `cpu_type=rome` — ensures you always gets the same kind of node.
+
+
+## What hardware did PBS give you?
+
+Three commands, run **inside the PBS job**.
+
+```bash
+lscpu                      # CPU model, sockets, cores, cache sizes
+numactl --hardware         # NUMA nodes + distance matrix
+lstopo-no-graphics --no-io # full hierarchy: socket → NUMA → cache → core
+```
+
+- `lscpu` is always on `PATH`. The other two live in `hwloc` / `numactl`, which EasyBuild pulls in as **dependencies of `OpenMPI`** — so load `ml GCC OpenMPI` even for a pure-OpenMP job.
+- The reference `pi_openmp.pbs` runs all three *before* the binary, so your `.o<jobid>` log will contain a topology block you can scroll through.
+
+::: {.callout-tip}
+You should be curious about the processor... details are important for efficient parallelization.
+:::
+
+## AMD Rome — the full node
+
+![**Two sockets** joined by three inter-socket links (~96 GB/s theoretical, 63–72 GB/s sustained per direction). Each socket has 16 CCXes (4 cores + L3 each), 8 memory controllers driving 256 GB DDR4 at 204.8 GB/s, and a ×16 PCIe 4.0 link to the InfiniBand adapter. Source: NASA HECC.](images/rome_processor_v2.jpg){width="70%"}
+
+## AMD Rome — sockets → CCDs → CCX
+
+- Each socket holds **8 chiplets (CCDs)**; each CCD packs two **Core Complexes (CCX)**; each CCX = **4 cores + a shared 16 MB L3**.
+- **2 sockets × 8 CCDs × 2 CCX × 4 cores = 128 cores per node.**
+- Each socket's **I/O die** owns that socket's memory controllers; DRAM on the *other* socket is only reachable over the three inter-socket links.
+
+## AMD Rome — cores, cache, NUMA
+
+| Level | What you get |
+|---|---|
+| NUMA domains | **8** per node (4 per socket; each spans 2 CCDs) |
+| L3 cache | 16 MB per CCX, shared by 4 cores |
+| L2 / L1d | 512 KB / 32 KB per core |
+| RAM | ~1 TB per node, split across the two sockets |
+
+- **L3 is the sharing boundary.** Four cores in the same CCX share cache. Rome has no node-wide last-level cache — a 4-thread team that fits in one CCX performs very differently from one scattered across four.
+
+::: {.callout-note}
+The 4-NUMA-per-socket layout comes from the BIOS mode **NPS4** (NUMA-Per-Socket = 4). Each NUMA domain spans 2 CCDs — *not* one-per-CCX, which would give 16. CX3 Rome nodes are always in NPS4; `numactl --hardware` confirms.
+:::
+
+
+## AMD Rome — NUMA distances
+
+From `numactl --hardware` on a Rome compute node:
+
+```
+          node 0   node 1 (same socket)   node 4 (other socket)
+          ------   --------------------   ---------------------
+distance:   10             12                      32
+```
+
+- SLIT values are **unitless BIOS hints**, not times — local is defined as 10 and everything else scales from that.
+- Measured pointer-chase on `cx3-13-2`: **~104 ns local, ~120 ns same-socket, ~247 ns cross-socket** (≈2.4× local, not 3×). Full 8×8 matrix in the appendix.
+- The inter-socket link carries *all* cross-socket memory traffic, so bandwidth is contended too.
+- **Rule of thumb:** threads that share data → same NUMA domain; threads that don't → spread across sockets to use more memory controllers.
+
+## Thread pinning
+
+Without pinning, the kernel is free to move threads between cores — bad for caches, worse for NUMA. Two environment variables fix that:
+
+```bash
+export OMP_PLACES=cores          # smallest binding unit = one core
+export OMP_PROC_BIND=close       # pack threads onto adjacent places
+export OMP_DISPLAY_AFFINITY=TRUE # print one line per thread at startup
+```
+
+- `close` keeps threads packed (share a socket / NUMA node when possible). Good default for compute-bound kernels like our $\pi$.
+- `spread` distributes threads across the machine. Use when you're **memory-bandwidth-bound** and want to hit multiple memory controllers.
+
+**Reality check.** Asking for `ncpus=8` on a 128-core rome node does *not* guarantee contiguous cores. A real run of ours landed threads on cores `12, 30, 31, 47, 61, 62, 67, 79` — scattered across both sockets. `close` still pins them, but only *within* the cpuset PBS gave you. For true locality, request a whole NUMA domain (`ncpus=16`) or a whole socket.
+
+## `OMP_NUM_THREADS`
+
+- The `ompthreads` PBS directive is really just shorthand for:
+
+  ```bash
+  export OMP_NUM_THREADS=8
+  ```
+
+- You can set it yourself in the script if you prefer the long form.
+- Without it, the OpenMP runtime chooses its own default from the visible CPUs — usually not what you want inside PBS.
+
+## Hands-on — submit the OpenMP Pi
+
+```bash
+cd ic-hpc-intro/examples
+qsub openmp/pi_openmp.pbs
+qstat -u $USER
+# when state = F:
+cat pi_openmp.o*
+```
+
+Compare the wall-time to the serial run. With 8 threads expect roughly **6×–7×** speed-up (not 8× — launch, reduction, vectorisation, and CPU-frequency effects eat some).
+
+## Reading the OpenMP log
+
+`<jobname>.o<jobid>` file has two parts. First the topology block we set up earlier; confirm Rome node and to see which cores PBS alooocated. Secondly, the output of the run:
+
+```bash
+n=1000000000  threads=8  pi=3.141592653589821  time=0.163s
+===============================================
+CPU Time used: 00:01:18
+CPU Percent:   789%
+Memory usage:  18mb
+Walltime:      00:00:01
+```
+
+- If PBS accounting reports `CPU Percent ≈ 800 %`, ~8 cores were active — good.
+- Very short jobs can show unhelpful accounting such as `CPU Percent: 0%`; trust the program's `threads=...` line and the affinity lines first.
+- If the program prints `threads=1`, OpenMP didn't activate (check `ompthreads`).
+- The `.e<jobid>` file holds the `OMP_DISPLAY_AFFINITY` lines — one per thread, showing which core it pinned to.
+
+## Scaling — what to expect
+
+- Near-linear to **4–8 threads** for Pi.
+- Flattens out as overheads, turbo-frequency changes, vector throughput, and socket placement dominate.
+- Strong scaling on 128 threads will likely top out at a ~60–80× speed-up for this kernel on one Rome node.
+- Real scientific codes rarely scale as well as Pi — this is the ceiling, not the floor.
+
+## Common OpenMP pitfalls
+
+- **Forgot `-fopenmp`** → pragmas silently ignored; program runs serially at full speed.
+- **Forgot `reduction(+:sum)`** → data race; answer changes every run.
+- **Declared loop index as shared** → threads fight over it; compile fails or answer is junk.
+- **Wrote the inner-loop body as `sum = sum + …`** → reduction still works; but `sum = f(i)` overwrites instead of accumulates. Watch what you're summing.
+
+# MPI on CX3
+
+## Distributed memory parallelism
+
+- MPI spreads a program across **many compute nodes** (and many cores within each).
+- Each rank is a separate **process** with its own memory.
+- To share data, ranks send explicit **messages** over the network.
+- Scales far beyond OpenMP — thousands of cores routinely, $\sim$ a million at the high end.
+
+## The SPMD model
+
+- MPI = Message Passing Interface.
+- "Single Program, Multiple Data":
+  - You launch the *same executable* N times.
+  - Each copy (rank) sees the same code but picks its own slice of the data using its rank ID.
+- Your program branches on `rank == 0` / `rank == 1` / etc. to do different things.
+
+## The six essentials
+
+Most MPI programs need only these six calls:
+
+```cpp
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+// ... do parallel work, exchange messages ...
+
+MPI_Finalize();
+```
+
+Plus one of `MPI_Send` / `MPI_Recv` / `MPI_Reduce` / `MPI_Bcast` for data exchange.
+
+## `MPI_Init` and `MPI_Finalize`
+
+- `MPI_Init` must be called before any other MPI call.
+- `MPI_Finalize` must be the last MPI call (per rank).
+- Between them lives the entire parallel body of your program.
+- Forgetting `MPI_Finalize` is legal but can hide resource leaks and confuse the launcher.
+
+## Rank and size
+
+```cpp
+int rank, size;
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // 0 .. size-1
+MPI_Comm_size(MPI_COMM_WORLD, &size);  // N
+
+if (rank == 0) {
+    // "master"-only work, e.g. reading config, writing results
+}
+```
+
+- `MPI_COMM_WORLD` = "all ranks that were launched".
+- Rank 0 is conventionally the *root* for reductions / I/O.
+
+## Collective communication — `MPI_Reduce`
+
+```cpp
+double local  = /* this rank's partial sum */;
+double global = 0.0;
+
+MPI_Reduce(&local, &global, 1, MPI_DOUBLE, MPI_SUM,
+           /*root=*/0, MPI_COMM_WORLD);
+
+if (rank == 0) {
+    std::cout << std::setprecision(15) << "global sum = " << global << '\n';
+}
+```
+
+- Every rank calls `MPI_Reduce` with its local value.
+- MPI combines them (here, sum) and delivers the result to the **root** rank only.
+- One function call; the network communication is hidden.
+
+## Pi — MPI version
+
+```{=latex}
+\scriptsize                                                                                                                                                                   
+```   
+
+```cpp
+MPI_Init(&argc, &argv);
+int rank, size;
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+const long long n = 1'000'000'000LL;
+const long long chunk  = n / size;
+const long long start  = 1 + rank * chunk;
+const long long finish = (rank == size - 1) ? n : (rank + 1) * chunk;
+
+double local_sum = 0.0;
+for (long long i = start; i <= finish; ++i) {
+    const double x = (1.0 / n) * (i - 0.5);
+    local_sum += 4.0 / (1.0 + x * x);
+}
+
+double global_sum = 0.0;
+MPI_Reduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+if (rank == 0) std::cout << std::setprecision(15) << "pi = " << (global_sum / n) << '\n';
+MPI_Finalize();
+```
+
+```{=latex}                                                                                                                                                                   
+\normalsize     
+```
+
+## Building — `mpicxx`
+
+Command-line:
+
+```bash
+ml tools/prod GCC OpenMPI
+mpicxx -O3 pi_mpi.cpp -o pi_mpi
+```
+
+`mpicxx` is a compiler wrapper — it calls `g++` with the MPI include + link flags for you. CMake:
+
+```cmake
+find_package(MPI REQUIRED COMPONENTS CXX)
+add_executable(pi_mpi pi_mpi.cpp)
+target_link_libraries(pi_mpi PRIVATE MPI::MPI_CXX)
+```
+
+You do **not** call `mpicxx` yourself when using CMake.
+
+## PBS for MPI — `mpiprocs`
+
+```bash
+#!/bin/bash
+#PBS -N pi_mpi
+#PBS -l walltime=00:10:00
+#PBS -l select=1:ncpus=16:mem=4gb:mpiprocs=16:cpu_type=rome
+
+cd $PBS_O_WORKDIR
+ml tools/prod
+ml GCC OpenMPI
+
+mpiexec ./build/mpi/pi_mpi
+```
+
+- `mpiprocs=16` — 16 MPI ranks on this chunk.
+- `mpiexec` (no `-n` needed) — PBS tells it how many ranks.
+
+## Single node vs. multi-node
+
+* Single node, 16 ranks — fast to schedule:
+```bash
+#PBS -l select=1:ncpus=16:mem=4gb:mpiprocs=16:cpu_type=rome
+
+* Two nodes, 64 ranks each = 128 ranks total — bigger but queues longer:
+```bash
+#PBS -l select=2:ncpus=64:mem=64gb:mpiprocs=64:cpu_type=rome
+```
+
+- Rule of thumb for an intro demo: stay on 1 node.
+- Multi-node routes through the `v1_capability*` queues, which have heavier backlogs.
+- MPI within a single node still goes over shared memory — fast.
+
+## Running — `mpiexec`
+
+- Always use `mpiexec` (not `./pi_mpi`) to launch an MPI program.
+- Inside PBS you don't pass `-n`; PBS exposes the rank count via its hostfile.
+- Locally on your laptop: `mpiexec -n 4 ./pi_mpi` — the `-n` is explicit.
+- The executable must be in a path visible to every rank — `$HOME` / RDS satisfies this.
+
+## Hands-on — submit the MPI Pi
+
+```bash
+cd ic-hpc-intro/examples
+qsub mpi/pi_mpi.pbs
+qstat -u $USER
+# when state = F:
+cat pi_mpi.o*
+```
+
+Edit the `.pbs` file, change `mpiprocs=16` to `4`, 8, 32 in turn, and plot the wall-time against rank count. You should see near-linear scaling up to ~32 ranks, then flattening.
+
+## Reading the MPI log
+
+Typical output:
+
+```bash
+n=1000000000  ranks=16  pi=3.141592653589793  time=0.076s
+===============================================
+CPU Time used: 00:01:13
+CPU Percent:   1581%
+Memory usage:  52mb
+```
+
+- If PBS accounting reports `CPU Percent ≈ 16 × 100 %`, all ranks were busy.
+- Very short MPI jobs can also show weak accounting data; trust the program's `ranks=...` line first.
+- If only one rank prints, rank 0 is doing its job (the others stay silent).
+
+## Scaling across nodes
+
+- Within a single node: MPI uses **shared memory** under the hood → very fast.
+- Across nodes: messages go over the **InfiniBand interconnect** → still fast, but higher latency per call.
+- Pi has a single `MPI_Reduce` per run — the cost is negligible.
+- Real codes with frequent small messages scale worse; aim to pack communication.
+
+## Common MPI pitfalls
+
+- **`mpiexec: command not found`** → forgot `ml OpenMPI`.
+- **Mismatched `ncpus` and `mpiprocs`** → PBS will let you over-subscribe; don't.
+- **Rank 0 reads a file, others try to read it too** → race on the filesystem; either have only rank 0 read and `MPI_Bcast`, or accept repeated reads.
+- **`MPI_Reduce` called from only some ranks** → deadlock. *Every* rank in the communicator must call every collective.
+- **Forgetting `MPI_Finalize`** → job doesn't crash but leaves resources hanging.
+
+# Wrap-up
+
+## OpenMP vs. MPI — when to use which
+
+| Question | OpenMP | MPI |
+|---|---|---|
+| Fits in one node's RAM? | yes | either |
+| Do I want to start with one pragma? | yes | no |
+| Need >128 cores? | no | yes |
+| Shared-memory data structures? | yes | no (explicit messages) |
+| Debugging difficulty | moderate | harder |
+
+Rule of thumb: **OpenMP first, MPI when you outgrow one node**.
+
+## Hybrid MPI + OpenMP (teaser)
+
+```bash
+#PBS -l select=2:ncpus=64:mem=64gb:mpiprocs=1:ompthreads=64
+```
+
+- One MPI rank per node × 64 OpenMP threads per rank.
+- Saves memory (one copy of the data per node, not per core).
+- Reduces MPI message count.
+
+## Where to go next
+
+- **OpenMP**: Remainder of this week we are focused on OpenMP
+- **MPI**: Following two weeks focus on MPI.
+- **CX3 docs**: <https://icl-rcs-user-guide.readthedocs.io/>
+- **Queue picker**: <https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/queues/job-sizing-guidance/>
+- **Self-service**: <https://selfservice.rcs.imperial.ac.uk/> — see your jobs in a prettier qstat.
+
+## Help and support
+
+- **Me** — g.gorman@imperial.ac.uk. Bring: job id, PBS script, `.o` / `.e` logs, a one-line description of what you expected.
+- **RCS ASK form** — <https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/get-support/contact-us/>
+- **Weekly drop-in clinic** — <https://icl-rcs-user-guide.readthedocs.io/en/latest/support/attend-a-clinic/>
+
+## Summary
+
+Today you should leave with:
+
+- An SSH session open to CX3.
+- A compiled `pi_serial`, `pi_openmp`, `pi_mpi`.
+- Three `.pbs` log files with $\pi = 3.14159265…$ in them.
+- An intuition for when to reach for OpenMP vs MPI.
+
+Everything else is practice.
+
+## Questions?
+
+::: {.center}
+**Thank you — and happy computing!**
+:::
+
+# Appendix
+
+## Measured NUMA latencies on a Rome node
+
+From `examples/benchmarks/numa_latency/` on **`cx3-13-2`** (EPYC 7742, NPS4): 256 MB pointer-chase (>> L3), single-cycle permutation, 50M dereferences per cell. CPU pinned with `numactl --cpunodebind`, memory bound via `numa_alloc_onnode`.
+
+ns per DRAM access:
+
+```{=latex}
+\tiny                                                                                                                                                                   
+```
+| src\\tgt |   0 |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
+|:---:|----:|----:|----:|----:|----:|----:|----:|----:|
+| **0** | **104** | 117 | 126 | 129 | 250 | 249 | 246 | 244 |
+| **1** | 116 | **104** | 129 | 125 | 251 | 253 | 249 | 248 |
+| **2** | 123 | 129 | **104** | 117 | 243 | 243 | 246 | 247 |
+| **3** | 128 | 124 | 118 | **103** | 249 | 250 | 251 | 252 |
+| **4** | 246 | 249 | 243 | 245 | **103** | 117 | 125 | 128 |
+| **5** | 249 | 250 | 249 | 249 | 116 | **105** | 128 | 123 |
+| **6** | 243 | 244 | 247 | 247 | 125 | 129 | **104** | 116 |
+| **7** | 246 | 248 | 251 | 252 | 129 | 125 | 118 | **104** |
+```{=latex}
+\normalsize      
+```
+
+## NUMA latencies on a Rome node - summary
+
+- **Local** (diagonal): ~104 ns
+- **Same-socket, adjacent NUMA** (0↔1, 2↔3, 4↔5, 6↔7): ~117 ns
+- **Same-socket, non-adjacent**: ~126 ns
+- **Cross-socket** (via xGMI): ~247 ns
+
+SLIT distances 10 / 12 / 32 → measured ratios **1.00 / 1.12–1.24 / 2.37**. SLIT orders the tiers correctly but overstates cross-socket (~2.4× not 3.2×) and hides the ~10% intra-socket structure (same SLIT "12" covers both 117 and 129 ns pairs).
