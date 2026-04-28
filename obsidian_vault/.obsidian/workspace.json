@@ -11,10 +11,14 @@
             "id": "01ffc1dd031a09c7",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "cluster/Login and Authentication.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Login and Authentication"
             }
           }
         ]
@@ -186,6 +190,7 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
+    "Index.md",
     "parallel for directive.md",
     "CLAUDE.md.tmp.16263.1777370429685",
     "CLAUDE.md.tmp.16263.1777370417216",
@@ -220,7 +225,6 @@
     "openmp/Memory Model.md",
     "openmp/critical and atomic.md",
     "openmp/Barriers.md",
-    "openmp/User-Defined Reductions.md",
-    "Index.md"
+    "openmp/User-Defined Reductions.md"
   ]
 }

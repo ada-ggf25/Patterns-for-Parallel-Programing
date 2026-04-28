@@ -12,7 +12,9 @@ Study and teaching materials for the **Patterns for Parallel Programming** modul
 Lecture 1/          Intro to HPC on CX3: modules, PBS, OpenMP + MPI overview
 Lecture 2/          OpenMP in depth: days 2–4 (parallel-for, tasks, Jacobi stencil)
                     Also contains student assessment (A1–A3) and grading rubric
-obsidian_vault/     Student study notes (Obsidian markdown) — mirrors Lecture 1 content only
+obsidian_vault/     Student study notes (Obsidian markdown) — covers the full module
+                    (Lecture 1: cluster/PBS/OpenMP basics/MPI + Lecture 2: OpenMP in depth,
+                    performance, A1/A2/A3 assessment notes)
 ```
 
 Each subdirectory has its own `CLAUDE.md` with build commands, architecture, and CI details specific to that lecture. **Always read the relevant subdirectory CLAUDE.md before making changes inside it.**
@@ -33,5 +35,5 @@ Both lectures follow the same pattern:
 - Module stack on CX3: `ml tools/prod GCC OpenMPI CMake`
 - PBS jobs: submit from `examples/` (Lecture 1) so relative paths in `.pbs` scripts resolve correctly.
 - Slides and tested code are kept in sync via a partials pipeline — always edit the `.cpp` source, never the generated `.qmd` partials.
-- `obsidian_vault/` is read-only study notes — no build artefacts; never add front-matter or YAML headers to notes there.
+- `obsidian_vault/` covers the full module (Lecture 1 + Lecture 2 + assessments) — no build artefacts; never add front-matter or YAML headers to notes there.
 - `Lecture 1/AGENTS.md` is an identical copy of `Lecture 1/CLAUDE.md` kept for Codex compatibility; keep the two in sync if either is updated.
