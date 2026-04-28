@@ -186,6 +186,7 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
+    "openmp/_OPENMP Macro.md",
     "openmp/Schedules.md.tmp.22561.1777382120840",
     "assessment/Assessment Overview.md.tmp.22561.1777382105495",
     "openmp/OMP Environment Variables.md.tmp.22561.1777382092354",
@@ -200,7 +201,6 @@
     "assessment/Assessment Overview.md",
     "cluster/Login and Authentication.md",
     "pbs/Interactive Jobs.md.tmp.16263.1777372522575",
-    "examples/Building the Examples.md.tmp.16263.1777372521684",
     "parallel for directive.md",
     "assessment/A3 Jacobi.md",
     "assessment/A2 Mandelbrot.md",
@@ -214,7 +214,6 @@
     "performance/Timing omp_get_wtime.md",
     "performance/Performance Metrics.md",
     "performance/Roofline Model.md",
-    "openmp/_OPENMP Macro.md",
     "openmp/taskloop.md",
     "openmp/Task Dependences.md",
     "openmp/Tasks.md",
