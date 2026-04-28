@@ -68,7 +68,7 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 ## Quick-reference one-liners
 
 ```bash
-ssh me@login.cx3.hpc.ic.ac.uk              # connect
+ssh ggf25@login.cx3.hpc.ic.ac.uk           # connect
 ml tools/prod GCC OpenMPI CMake            # full toolchain
 qsub assignment-1/evaluate.pbs            # submit A1
 qstat -u $USER                             # monitor

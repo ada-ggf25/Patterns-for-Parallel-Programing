@@ -190,6 +190,11 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
+    "pbs/Interactive Jobs.md.tmp.16263.1777372522575",
+    "examples/Building the Examples.md.tmp.16263.1777372521684",
+    "examples/Running on CX3.md.tmp.16263.1777372520917",
+    "cluster/Login and Authentication.md.tmp.16263.1777372520272",
+    "Index.md.tmp.16263.1777372512549",
     "Index.md",
     "parallel for directive.md",
     "CLAUDE.md.tmp.16263.1777370429685",
@@ -201,12 +206,8 @@
     "assessment/A2 Mandelbrot.md",
     "assessment/A2 Mandelbrot.md.tmp.16263.1777370327592",
     "assessment/A1 Integration.md",
-    "assessment/A1 Integration.md.tmp.16263.1777370308305",
     "assessment/Assessment Overview.md",
-    "assessment/Assessment Overview.md.tmp.16263.1777370288483",
-    "assessment",
     "performance/STREAM and HPL.md",
-    "performance/STREAM and HPL.md.tmp.16263.1777370265733",
     "performance/Six Sources of Overhead.md",
     "performance/Loop Transformations.md",
     "performance/SIMD.md",
@@ -224,7 +225,6 @@
     "openmp/Locks.md",
     "openmp/Memory Model.md",
     "openmp/critical and atomic.md",
-    "openmp/Barriers.md",
-    "openmp/User-Defined Reductions.md"
+    "openmp/Barriers.md"
   ]
 }
