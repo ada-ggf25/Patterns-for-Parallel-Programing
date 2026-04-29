@@ -11,10 +11,14 @@
             "id": "01ffc1dd031a09c7",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "assessment/A2 Progress.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "A2 Progress"
             }
           }
         ]
@@ -84,7 +88,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 315.5
   },
   "right": {
     "id": "right",
@@ -186,21 +190,23 @@
   },
   "active": "01ffc1dd031a09c7",
   "lastOpenFiles": [
-    "openmp/Tasks.md.tmp.101019.1777461065780",
-    "openmp/taskloop.md.tmp.101019.1777461061899",
-    "assessment/A2 Mandelbrot.md.tmp.101019.1777460793290",
-    "assessment/A2 Mandelbrot.md.tmp.101019.1777460789414",
-    "openmp/single and masked.md.tmp.101019.1777460784682",
+    "CLAUDE.md.tmp.175014.1777496051056",
+    "assessment/A2 Progress.md",
+    "assessment/A2 Progress.md.tmp.175014.1777493037878",
+    "assessment/A2 Progress.md.tmp.175014.1777493032490",
+    "assessment/A2 Progress.md.tmp.175014.1777492121099",
+    "assessment/A2 Progress.md.tmp.175014.1777492109983",
+    "assessment/A2 Progress.md.tmp.175014.1777492106934",
+    "assessment/A2 Progress.md.tmp.175014.1777492103120",
+    "assessment/A2 Progress.md.tmp.175014.1777491797595",
+    "assessment/A2 Progress.md.tmp.175014.1777491190104",
+    "assessment/A2 Progress.md.tmp.175014.1777491186416",
+    "assessment/A2 Progress.md.tmp.175014.1777491177211",
+    "assessment/A2 Benchmark Results.md",
     "Index.md",
     "openmp/Memory Model.md",
     "assessment/A1 Benchmark Results.md",
-    "openmp/taskloop.md.tmp.101019.1777460383064",
-    "openmp/Tasks.md.tmp.101019.1777460360489",
     "assessment/A1 Progress.md",
-    "assessment/A1 Progress.md.tmp.76900.1777455576262",
-    "assessment/A1 Progress.md.tmp.76900.1777455569246",
-    "assessment/A1 Progress.md.tmp.76900.1777455565124",
-    "assessment/A1 Progress.md.tmp.76900.1777455561881",
     "assessment/A1 Integration.md",
     "assessment/A3 Jacobi.md",
     "examples/pi_openmp.md",
@@ -219,8 +225,6 @@
     "performance/Timing omp_get_wtime.md",
     "performance/Performance Metrics.md",
     "performance/Roofline Model.md",
-    "openmp/taskloop.md",
-    "openmp/Task Dependences.md",
-    "openmp/Tasks.md"
+    "openmp/taskloop.md"
   ]
 }

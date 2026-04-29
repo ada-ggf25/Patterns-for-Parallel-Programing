@@ -4,27 +4,43 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 
 ---
 
-## Assessment 1 — Active Work
+## Assessment 1 — COMPLETE ✅
 
-**Status: NOT STARTED** | Branch: `ggf25` | 20 pts
+**Status: COMPLETE — all phases done, all CI green** | Branch: `ggf25` | 20 pts
 
-→ [[assessment/A1 Progress]] — step-by-step checklist, phases, and scoring tracker *(start here)*
+→ [[assessment/A1 Progress]] — completed checklist and scoring tracker
 → [[assessment/A1 Integration]] — full technical reference (kernel, schedule theory, REFLECTION guide)
-→ [[assessment/A1 Benchmark Results]] — CX3 Rome measured times, schedule comparison, roofline position
+→ [[assessment/A1 Benchmark Results]] — CX3 Rome measured times (guided wins at 128T: 0.0446 s, 42.49× speedup)
+
+---
+
+## Assessment 2 — Active Work
+
+**Status: IN PROGRESS — Phases 1, 2, 3 & 3.5 complete; next: Phase 4 (CX3 formal benchmark)** | Branch: `ggf25` | 30 pts
+
+→ [[assessment/A2 Progress]] — step-by-step checklist, phases, and scoring tracker *(start here)*
+→ [[assessment/A2 Mandelbrot]] — full technical reference (kernel, implementation patterns, CHOICE.md format, REFLECTION guide)
+→ [[assessment/A2 Benchmark Results]] — Phase 3.5 sweep data filled; Phase 4 formal data pending
 
 **Phase overview:**
 
 | Phase | Task | Status |
 |---|---|---|
-| 1 | Parallelise `integrate_parallel()` in `integrate.cpp` | ✅ |
-| 2 | Schedule sweep + fill `tables.csv` (needs CX3 Rome run) | ✅ guided wins; `integrate.cpp` still needs hardcode |
-| 3 | Answer 15 MCQs in `answers.csv` | ⬜ |
-| 4 | Write all sections of `REFLECTION.md` | ⬜ |
-| 5 | Lint clean + all CI jobs green | 🟨 |
+| 1 | Implement `mandelbrot_parallel_for()` in `mandelbrot_for.cpp` | ✅ `schedule(dynamic,1)` hardcoded |
+| 2 | Implement `mandelbrot_tasks()` in `mandelbrot_tasks.cpp` | ✅ `taskloop grainsize(1)` + reduction |
+| 3 | TSan check locally + push for CI | ✅ CI green (Build & TSan correctness) |
+| 3.5 | Schedule sweep (`sweep.pbs`) + hardcode winner | ✅ `dynamic,1` = 0.068 s at 128T — winner |
+| 4 | CX3 formal benchmark (`qsub evaluate.pbs`) + fill `tables.csv` | ⬜ **NEXT** |
+| 5 | Answer 15 MCQs in `answers.csv` (independent) | ⬜ |
+| 6 | Fill `CHOICE.md` header with measured evidence from Phase 4 | ⬜ |
+| 7 | Write all sections of `REFLECTION.md` | ⬜ |
+| 8 | Lint clean + all CI jobs green | ⬜ (style + reflection CI still failing) |
 
-**Critical path:** Phase 1 → CI green → Phase 2 (CX3 benchmark) → Phase 4 (needs measured numbers). Phase 3 is independent.
+**Critical path:** Phase 4 (CX3 formal benchmark) → Phases 6+7 (need `perf-results-a2.json`). Phase 5 is independent.
 
-**Key constraints:** do not edit `integrate_serial.cpp`, `integrate.h`, `main()`, or `.github/workflows/`. Do not commit `build/`.
+**Sweep winner:** `parallel_for schedule(dynamic,1)` = **0.068 s** at 128T vs `tasks` = 0.458 s — `parallel_for` wins by 6.7×.
+
+**Key constraints:** do not edit `mandelbrot_serial.cpp`, `mandelbrot.h`, or `.github/workflows/`. Do not commit `build/`. **Do** commit `perf-results-a2.json` (required for CHOICE.md grading).
 
 ---
 
@@ -76,10 +92,11 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 **Assessments:**
 
 32. [[assessment/Assessment Overview]] — 100-pt rubric, thread ladder, grading formulas.
-33. [[assessment/A1 Progress]] — ⬜ A1 checklist and progress tracker *(active)*.
+33. [[assessment/A1 Progress]] — ✅ A1 complete.
 34. [[assessment/A1 Integration]] — 20 pts, full technical reference for schedule sweep.
-35. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs taskloop.
-36. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
+35. [[assessment/A2 Progress]] — ⬜ A2 checklist and progress tracker *(active)*.
+36. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs tasks, CHOICE.md format, implementation patterns.
+37. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
 
 ## Map by topic
 
