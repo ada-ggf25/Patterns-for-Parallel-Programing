@@ -12,6 +12,12 @@ Study and teaching materials for the **Patterns for Parallel Programming** modul
 Introduction/       Intro to HPC on CX3: modules, PBS, OpenMP + MPI overview
 Week 1/             OpenMP in depth: days 2–4 (parallel-for, tasks, Jacobi stencil)
                     Also contains student assessment (A1–A3) and grading rubric
+Assessment 1/       Student submission: OpenMP parallel-for numerical integration (20 marks)
+                    Deliverables: integrate.cpp, answers.csv, tables.csv, REFLECTION.md
+                    Has its own CLAUDE.md with build/lint/CI details
+Assessment 2/       Student submission: OpenMP parallel-for vs tasks Mandelbrot comparison (30 marks)
+                    Deliverables: mandelbrot_for.cpp, mandelbrot_tasks.cpp, answers.csv,
+                    tables.csv, CHOICE.md, REFLECTION.md
 obsidian_vault/     Student study notes (Obsidian markdown) — covers the full module
                     (Introduction: cluster/PBS/OpenMP basics/MPI + Week 1: OpenMP in depth,
                     performance, A1/A2/A3 assessment notes)
