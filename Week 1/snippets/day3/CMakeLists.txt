@@ -30,12 +30,9 @@ function(ppp_add_day3_race_demo_test name)
 endfunction()
 
 ppp_add_day3_test(critical_vs_atomic)
-ppp_add_day3_test(fibonacci_tasks)
+ppp_add_day3_test(tasks_basic)
 ppp_add_day3_test(taskloop_apply)
 ppp_add_day3_test(barriers_explicit)
-ppp_add_day3_test(race_flush_missing)
 ppp_add_day3_test(task_dependences)
 ppp_add_day3_test(task_locks)
 ppp_add_day3_test(single_master_nowait)
-
-ppp_add_day3_race_demo_test(race_flush_missing)

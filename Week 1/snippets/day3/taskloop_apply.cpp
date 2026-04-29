@@ -9,8 +9,13 @@
 //                    ceil(n/G) tasks, each covering G iterations.
 //   apply_for      — equivalent `parallel for` baseline for comparison.
 //
-// For uniform-cost `f`, `apply_for` generally wins (lower overhead).
-// For irregular `f`, `apply_taskloop` wins (dynamic scheduling).
+// For a flat top-level loop the two are roughly equivalent on irregular
+// cost — both work-steal with similar overhead. Reach for `taskloop`
+// when the loop itself is invoked from inside an enclosing `task`
+// region (a nested `parallel for` would spin up a fresh team), or when
+// the chunks need to participate in a dependence graph or carry
+// priorities. Otherwise `apply_for` with `schedule(dynamic, C)` is
+// simpler and performs identically.
 
 static inline double f(double x)
 {

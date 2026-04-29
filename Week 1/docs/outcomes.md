@@ -88,7 +88,7 @@ Totals sum to **100**. Evaluate marks are deliberately lower than the reviewer's
 - **Day 5**: lab-supported iteration. Students refine any of A1/A2/A3 in light of what they've learned.
 - **End of day 5**: **final snapshot** graded — no per-day partial credit, no iterating after the deadline.
 
-Rubric mechanics are **not staged**. Full rubrics are visible from day 2 morning. Kernel design is structured so that *the pedagogically-correct thing is also the highest-scoring thing*: A2's image region is not tuned to make tasks-always-win (CHOICE.md is graded on the student's own evidence either way); A3 extensions reward actual optimisation; correctness gates performance everywhere. There's no shortcut that pays off better than learning the material.
+Rubric mechanics are **not staged**. Full rubrics are visible from day 2 morning. Kernel design is structured so that *the pedagogically-correct thing is also the highest-scoring thing*: A2's image region is irregular but not pathological — neither variant is rigged to win, and CHOICE.md is graded on the student's own evidence either way; A3 extensions reward actual optimisation; correctness gates performance everywhere. There's no shortcut that pays off better than learning the material.
 
 ## Anti-patterns the assessment deliberately resists
 
@@ -96,7 +96,7 @@ Rubric mechanics are **not staged**. Full rubrics are visible from day 2 morning
 2. **"Correct-looking output that's actually wrong"** — every perf score is correctness-gated. A wrong answer scores zero regardless of timing.
 3. **"Pragma-ism"** — the A2 two-variant submission requires *both* implementations to be authored, built, and run; tokens in code don't score marks, measured behaviour does.
 
-4. **"Tuning the kernel to make tasks always win"** — A2's image region and grid are deliberately *not* tuned for tasks. CHOICE.md is graded on whether the recommendation is consistent with the student's own measured evidence — either variant can be the right answer.
+4. **"Tuning the kernel to make tasks always win"** — A2's image region is irregular but not pathological; neither variant is rigged to win. CHOICE.md is graded on whether the recommendation is consistent with the student's own measured evidence; either variant can be the right answer.
 5. **"LLM-graded reflection"** — removed by design. Free-text reasoning marks are either deterministic (structured keyword enums, cross-check against the student's own measured data) or explicitly human-graded on tightly-bounded prompts. The LLM is never in the summative loop.
 6. **"Secret rubric mechanics"** — full rubric released day 2; no hidden point allocations.
 
