@@ -21,35 +21,38 @@ The spawning thread does **not** wait for the spawned task. It moves on.
 
 ## The canonical pattern: `single` + recursive spawn
 
+Post-order tree sum — a tree has no flat iteration space so `parallel for` can't reach it; tasks fan out naturally:
+
 ```cpp
-long long fib_task(long long n)
+long tree_sum(const Node* p)
 {
-    if (n < 2) return n;
+    if (p == nullptr) return 0;
+    long left_sum = 0, right_sum = 0;
 
-    long long x = 0, y = 0;
+#pragma omp task shared(left_sum)
+    left_sum  = tree_sum(p->left);
+#pragma omp task shared(right_sum)
+    right_sum = tree_sum(p->right);
 
-#pragma omp task shared(x) firstprivate(n)
-    x = fib_task(n - 1);
-#pragma omp task shared(y) firstprivate(n)
-    y = fib_task(n - 2);
-#pragma omp taskwait           // wait for both children
-
-    return x + y;
+#pragma omp taskwait           // wait for both direct children
+    return p->value + left_sum + right_sum;
 }
 
-long long fib_parallel(long long n)
+long tree_sum_parallel(const Node* root)
 {
-    long long result = 0;
-#pragma omp parallel default(none) shared(result) firstprivate(n)
+    long total = 0;
+#pragma omp parallel default(none) shared(total) firstprivate(root)
     {
-#pragma omp single             // only one thread starts the tree
-        result = fib_task(n);
+#pragma omp single             // one thread seeds the recursion
+        total = tree_sum(root);
     }
-    return result;
+    return total;
 }
 ```
 
-Without `single`, each thread would spawn the full tree — P× the work.
+`shared()` overrides the `firstprivate`-by-default rule so child writes are visible to the parent's locals. Without `single`, each of P threads would spawn the full subtree — P× the work, same answer.
+
+Real-world relatives: quicksort, mergesort, Barnes–Hut tree walks, sparse Cholesky.
 
 ## Task data environment
 
@@ -92,6 +95,6 @@ Use `taskgroup` when your tasks spawn their own tasks and you need to wait for t
 ## Related
 
 - [[Task Dependences]] — depend clauses for pipeline scheduling.
-- [[taskloop]] — the convenience form for task-based loops.
+- [[taskloop]] — task-based loops; when to prefer it over `parallel for`.
 - [[single and masked]] — why `single` is the standard spawn wrapper.
-- [[../assessment/A2 Mandelbrot]] — A2 uses tasks for irregular tile workload.
+- [[../assessment/A2 Mandelbrot]] — A2 requires both a `taskloop` and a `parallel for` variant.

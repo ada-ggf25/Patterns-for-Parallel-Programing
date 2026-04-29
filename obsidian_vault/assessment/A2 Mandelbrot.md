@@ -6,7 +6,7 @@ Implement **two** parallel variants of Mandelbrot set membership counting, bench
 
 Count Mandelbrot-set membership over a 5000 × 5000 grid (post-symmetry: 5000 × 2500 sampled, doubled). Per-pixel cost: 1 to 1000 escape-time iterations depending on position — **highly irregular**.
 
-Per-tile cost ratio can exceed 100×. This is what makes schedule / task-granularity choice genuinely informative.
+Per-tile cost ratio can exceed 100×. The image region is irregular but not pathological — neither variant is rigged to win; measure both and let your own data decide.
 
 ## Two required variants
 
@@ -44,7 +44,7 @@ justification_keyword: irregular_load_balance   # only if recommending the slowe
 
 The grader parses this header. Your recommendation passes if it matches the variant your **own** committed `perf-results-a2.json` shows as faster, OR if you recommend the slower one with a defensible keyword (`irregular_load_balance`, `simpler_code`, etc.).
 
-**Either variant can be the right answer.** The image region is deliberately not tuned to make tasks always win. Read your own measurements.
+**Either variant can be the right answer.** Expect roughly equivalent performance — read your own measurements and let the data drive your `CHOICE.md`.
 
 ## Scoring (30 pts)
 

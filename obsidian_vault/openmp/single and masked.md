@@ -69,7 +69,7 @@ For recursive task trees, `single` prevents every team member from redundantly s
 #pragma omp parallel
 {
 #pragma omp single          // only one thread starts the recursion
-    result = fib_task(n);   // others pick up queued tasks
+    total = tree_sum(root); // others pick up queued tasks
 }
 ```
 

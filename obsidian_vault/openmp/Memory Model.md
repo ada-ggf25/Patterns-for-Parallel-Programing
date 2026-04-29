@@ -42,26 +42,32 @@ A `flush` is a fence: writes before the flush become visible after it; reads aft
 
 In practice, the implicit flush points at construct boundaries usually suffice. Explicit `flush` is needed mainly in lock-free patterns.
 
-## Acquire / release semantics (5.1)
+## The five atomic memory-ordering clauses (5.1)
+
+Every `#pragma omp atomic` takes an optional ordering clause. `seq_cst` is the default and the safe choice; relaxed orderings are cheaper on weakly-ordered CPUs (arm64, POWER) but must be paired correctly.
+
+| Clause | Legal on | Meaning |
+|---|---|---|
+| `seq_cst` | read / write / update / capture | Every `seq_cst` access sits in a single global total order. Strongest, default, safe. |
+| `release` | write / update / capture | Prior reads and writes complete *before* this store. Pairs with a matching `acquire` load. |
+| `acquire` | read / update / capture | Subsequent reads and writes happen *after* this load. Pairs with a matching `release` store. |
+| `acq_rel` | update / capture | Acquire on the read part + release on the write part. Right for compare-and-swap and lock-free queues. |
+| `relaxed` | any | Atomicity only — no ordering relative to other accesses. Use for standalone counters/statistics that don't gate any other state. |
+
+### Acquire / release publish-subscribe idiom
 
 ```cpp
-// Publisher (thread A):
-payload = 42;
-#pragma omp atomic write release   // = std::memory_order_release
-ready = 1;
-
-// Subscriber (thread B):
-int seen;
-do {
-#pragma omp atomic read acquire    // = std::memory_order_acquire
-    seen = ready;
-} while (seen == 0);
-use(payload);   // safe — acquire guarantees payload is visible
+// Thread A (publisher):              // Thread B (subscriber):
+data = 42;                            int seen = 0;
+#pragma omp atomic write release      do {
+ready = 1;                            #pragma omp atomic read acquire
+                                        seen = ready;
+                                      } while (!seen);
+                                      printf("%d\n", data);   // sees 42
 ```
 
-- A **release** store guarantees prior writes are visible before the flag store.
-- A matching **acquire** load guarantees subsequent reads see those prior writes.
-- Cheaper than `seq_cst` (the 5.1 default) on weakly-ordered CPUs (arm64, POWER).
+- The release-store synchronises-with the acquire-load: every memory effect *before* the release on A is observable *after* the acquire on B.
+- Cheaper than `seq_cst` on weakly-ordered CPUs (arm64, POWER).
 
 ## Implicit flush summary
 
