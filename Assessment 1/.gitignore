@@ -1,11 +1,5 @@
 build/
 **/*.o
 
-# Local Claude-Code guidance — per ~/CLAUDE.md, never tracked.
-**/CLAUDE.md
-
-# private files
-/obsidian_vault/
-
 # cached files
 .cache/

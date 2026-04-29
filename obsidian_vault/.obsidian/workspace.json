@@ -11,10 +11,14 @@
             "id": "01ffc1dd031a09c7",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "assessment/A1 Benchmark Results.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "A1 Benchmark Results"
             }
           }
         ]
