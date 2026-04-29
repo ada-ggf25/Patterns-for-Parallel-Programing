@@ -1,0 +1,77 @@
+#!/bin/bash
+#PBS -N a1_integrate_all_schedules
+#PBS -l walltime=00:45:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128
+#PBS -l place=excl
+
+# Schedule sweep benchmark — tests static, dynamic,64, and guided at
+# {1, 16, 64, 128} threads in a single job. Requires integrate.cpp to use
+# schedule(runtime) so OMP_SCHEDULE selects the schedule at runtime.
+# Results land in bench/<schedule>/integrate-<p>.json.
+# After identifying the winning schedule, restore it as the hardcoded
+# schedule in integrate.cpp before committing.
+
+set -euo pipefail
+
+module purge
+module load tools/prod GCC/13.3.0 CMake Python numactl
+
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v hyperfine >/dev/null 2>&1; then
+    echo "hyperfine not found on PATH"; exit 1
+fi
+
+cd "$PBS_O_WORKDIR"
+
+# Fresh Rome-targeted release build (compiled once; schedule is runtime).
+rm -rf build
+export CC=gcc CXX=g++
+export CXXFLAGS="-O3 -march=znver2 -mavx2 -fopenmp -Wall -Wextra"
+cmake -S . -B build
+cmake --build build --target integrate -j
+
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+SCHEDULES=("static" "dynamic,64" "guided")
+
+for sched in "${SCHEDULES[@]}"; do
+    # Use a filesystem-safe directory name (replace comma with underscore).
+    sched_dir="bench/${sched//,/_}"
+    mkdir -p "$sched_dir"
+
+    echo ""
+    echo "========================================"
+    echo "  Schedule: $sched"
+    echo "========================================"
+
+    export OMP_SCHEDULE="$sched"
+
+    for p in 1 16 64 128; do
+        echo "--- $sched @ $p threads ---"
+        OMP_NUM_THREADS=$p hyperfine --warmup 5 --min-runs 5 \
+            --export-json "$sched_dir/integrate-$p.json" \
+            "./build/integrate"
+
+        tmin=$(python3 bin/hyperfine_min_time.py "$sched_dir/integrate-$p.json")
+        echo "  min time: $tmin s"
+    done
+done
+
+echo ""
+echo "========================================"
+echo "  Summary (min times in seconds)"
+echo "========================================"
+printf "%-15s %10s %10s %10s %10s\n" "schedule" "T(1)" "T(16)" "T(64)" "T(128)"
+for sched in "${SCHEDULES[@]}"; do
+    sched_dir="bench/${sched//,/_}"
+    t1=$(python3 bin/hyperfine_min_time.py "$sched_dir/integrate-1.json")
+    t16=$(python3 bin/hyperfine_min_time.py "$sched_dir/integrate-16.json")
+    t64=$(python3 bin/hyperfine_min_time.py "$sched_dir/integrate-64.json")
+    t128=$(python3 bin/hyperfine_min_time.py "$sched_dir/integrate-128.json")
+    printf "%-15s %10s %10s %10s %10s\n" "$sched" "$t1" "$t16" "$t64" "$t128"
+done
+
+echo ""
+echo "Results saved under bench/. Choose the winning schedule, hardcode it"
+echo "in integrate.cpp (replacing schedule(runtime)), then commit."

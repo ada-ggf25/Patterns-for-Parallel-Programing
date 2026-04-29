@@ -1,0 +1,5 @@
+thread_count,measured_time_s,measured_speedup,measured_efficiency
+1,1.896130,1.00,1.00
+16,0.229710,8.2544,0.5159
+64,0.071898,26.3725,0.4121
+128,0.044624,42.4911,0.3320

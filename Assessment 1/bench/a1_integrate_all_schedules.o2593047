@@ -1,0 +1,119 @@
+-- The CXX compiler identification is GNU 14.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /sw-eb/software/GCCcore/14.3.0/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Configuring done (14.5s)
+-- Generating done (0.0s)
+-- Build files have been written to: /rds/general/user/ggf25/home/ppp-openmp-assessment-1-ada-ggf25/build
+[ 33%] Building CXX object CMakeFiles/integrate.dir/integrate.cpp.o
+[ 66%] Building CXX object CMakeFiles/integrate.dir/integrate_serial.cpp.o
+[100%] Linking CXX executable integrate
+[100%] Built target integrate
+
+========================================
+  Schedule: static
+========================================
+--- static @ 1 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      1.907 s ±  0.008 s    [User: 1.891 s, System: 0.012 s]
+  Range (min … max):    1.894 s …  1.915 s    5 runs
+ 
+  min time: 1.89390272142 s
+--- static @ 16 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):     338.7 ms ±   0.9 ms    [User: 1985.1 ms, System: 14.4 ms]
+  Range (min … max):   337.6 ms … 340.0 ms    8 runs
+ 
+  min time: 0.33755106066 s
+--- static @ 64 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      96.5 ms ±   0.2 ms    [User: 2441.8 ms, System: 25.6 ms]
+  Range (min … max):    96.1 ms …  96.9 ms    27 runs
+ 
+  min time: 0.09605724 s
+--- static @ 128 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      57.2 ms ±   0.5 ms    [User: 2924.4 ms, System: 81.3 ms]
+  Range (min … max):    56.6 ms …  59.6 ms    43 runs
+ 
+  min time: 0.05660478892000001 s
+
+========================================
+  Schedule: dynamic,64
+========================================
+--- dynamic,64 @ 1 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      1.908 s ±  0.004 s    [User: 1.892 s, System: 0.011 s]
+  Range (min … max):    1.905 s …  1.913 s    5 runs
+ 
+  min time: 1.90476948986 s
+--- dynamic,64 @ 16 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):     140.5 ms ±   0.4 ms    [User: 2054.8 ms, System: 13.3 ms]
+  Range (min … max):   140.1 ms … 141.6 ms    19 runs
+ 
+  min time: 0.14014943622000003 s
+--- dynamic,64 @ 64 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      73.3 ms ±   1.4 ms    [User: 3864.4 ms, System: 31.6 ms]
+  Range (min … max):    69.7 ms …  75.3 ms    35 runs
+ 
+  min time: 0.06965577754 s
+--- dynamic,64 @ 128 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):     100.9 ms ±   1.2 ms    [User: 11046.9 ms, System: 91.5 ms]
+  Range (min … max):    98.7 ms … 103.1 ms    26 runs
+ 
+  min time: 0.09865954918 s
+
+========================================
+  Schedule: guided
+========================================
+--- guided @ 1 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      1.900 s ±  0.004 s    [User: 1.886 s, System: 0.011 s]
+  Range (min … max):    1.896 s …  1.906 s    5 runs
+ 
+  min time: 1.8961302172400003 s
+--- guided @ 16 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):     230.5 ms ±   0.3 ms    [User: 1956.2 ms, System: 12.6 ms]
+  Range (min … max):   229.7 ms … 230.8 ms    12 runs
+ 
+  min time: 0.22971008804 s
+--- guided @ 64 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      72.6 ms ±   0.8 ms    [User: 2452.0 ms, System: 31.6 ms]
+  Range (min … max):    71.9 ms …  75.5 ms    35 runs
+ 
+  min time: 0.071898121 s
+--- guided @ 128 threads ---
+Benchmark 1: ./build/integrate
+  Time (mean ± σ):      46.2 ms ±   6.1 ms    [User: 2930.3 ms, System: 92.9 ms]
+  Range (min … max):    44.6 ms …  88.9 ms    51 runs
+ 
+  min time: 0.04462415678 s
+
+========================================
+  Summary (min times in seconds)
+========================================
+schedule              T(1)      T(16)      T(64)     T(128)
+static          1.89390272142 0.33755106066 0.09605724 0.05660478892000001
+dynamic,64      1.90476948986 0.14014943622000003 0.06965577754 0.09865954918
+guided          1.8961302172400003 0.22971008804 0.071898121 0.04462415678
+
+Results saved under bench/. Choose the winning schedule, hardcode it
+in integrate.cpp (replacing schedule(runtime)), then commit.
+
+====================================
+CPU Time used: 00:14:31
+CPU Percent: 845%
+Memory usage: 178556kb
+Approx Power usage: 0.0028
+Walltime usage: 00:02:09
+
+====================================

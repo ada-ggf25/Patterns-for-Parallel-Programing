@@ -1,0 +1,50 @@
+#!/bin/bash
+#PBS -N a1_integrate
+#PBS -l walltime=00:15:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128
+#PBS -l place=excl
+
+# Self-benchmark on Rome — students run this themselves with `qsub
+# evaluate.pbs` from a CX3 login node, or the instructor runs it during
+# end-of-cohort grading via ppp-openmp-grader/grade_cohort.sh. Produces
+# perf-results-a1.json consumed by evaluate-assessment-artifacts.py.
+
+set -euo pipefail
+
+module purge
+module load tools/prod GCC/13.3.0 CMake Python numactl
+
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v hyperfine >/dev/null 2>&1; then
+    echo "hyperfine not found on PATH"; exit 1
+fi
+
+cd "$PBS_O_WORKDIR"
+
+# Fresh Rome-targeted release build.
+rm -rf build
+export CC=gcc CXX=g++
+export CXXFLAGS="-O3 -march=znver2 -mavx2 -fopenmp -Wall -Wextra"
+cmake -S . -B build
+cmake --build build --target integrate -j
+
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+# Per-thread hyperfine run; aggregate into perf-results-a1.json.
+echo '{"results": [' > perf-results-a1.json
+first=1
+for p in 1 16 64 128; do
+    echo "=== A1 integrate @ $p threads ==="
+    OMP_NUM_THREADS=$p hyperfine --warmup 1 --min-runs 3 \
+        --export-json "integrate-$p.json" \
+        "./build/integrate"
+
+    tmin=$(python3 bin/hyperfine_min_time.py "integrate-$p.json")
+    echo "  min time: $tmin s"
+    [ $first -eq 0 ] && echo ',' >> perf-results-a1.json || first=0
+    printf '  {"thread_count": %d, "time_s": %s}' "$p" "$tmin" >> perf-results-a1.json
+done
+echo ']}' >> perf-results-a1.json
+
+echo "✅ A1 benchmark complete — see perf-results-a1.json"
