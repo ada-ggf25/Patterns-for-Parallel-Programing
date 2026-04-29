@@ -28,9 +28,24 @@ What the runtime does:
 
 1. Gives each thread its own private `sum` variable, initialised to the identity for the operator (0 for `+`, 1 for `*`, etc.).
 2. Each thread accumulates into its private copy — no contention.
-3. At the end of the loop, all private values are combined into the master's `sum` using the operator.
+3. At the end of the loop, all private copies are combined with each other **and with the original pre-region value of `sum`** using the operator.
 
-The result is deterministic *up to floating-point rounding* — `+` on doubles is not associative, so different thread counts can produce slightly different last-bit results. For π via midpoint rule with N=1e9, you'll see the result agree to ~14 decimal places.
+The result is deterministic *up to floating-point rounding* — `+` on doubles is not associative, so different thread counts can produce slightly different last-bit results.
+
+### Non-zero initial value
+
+The original value of the reduction variable is preserved and included in the final combination. This matters for A1: the trapezoid endpoints are computed before the parallel region:
+
+```cpp
+double sum = 0.5 * (f(a) + f(b));    // non-zero initial value
+#pragma omp parallel for reduction(+:sum) ...
+for (long i = 1; i < n; ++i) {
+    sum += f(x_i);                    // each thread accumulates privately
+}
+// Final result: 0.5*(f(a)+f(b))  +  all thread partial sums
+```
+
+This is correct — do NOT set `sum = 0.0` before the parallel region and add the endpoints separately afterwards, because you would then need to combine in a race-prone way. Let `reduction` handle it.
 
 ## Supported operators
 

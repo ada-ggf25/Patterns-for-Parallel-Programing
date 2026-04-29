@@ -2,6 +2,32 @@
 
 This vault covers the full **Patterns for Parallel Programming** module at Imperial College London (Introduction: HPC intro + Week 1: OpenMP in depth + assessments).
 
+---
+
+## Assessment 1 — Active Work
+
+**Status: NOT STARTED** | Branch: `ggf25` | 20 pts
+
+→ [[assessment/A1 Progress]] — step-by-step checklist, phases, and scoring tracker *(start here)*
+→ [[assessment/A1 Integration]] — full technical reference (kernel, schedule theory, REFLECTION guide)
+→ [[assessment/A1 Benchmark Results]] — CX3 Rome measured times, schedule comparison, roofline position
+
+**Phase overview:**
+
+| Phase | Task | Status |
+|---|---|---|
+| 1 | Parallelise `integrate_parallel()` in `integrate.cpp` | ✅ |
+| 2 | Schedule sweep + fill `tables.csv` (needs CX3 Rome run) | ✅ guided wins; `integrate.cpp` still needs hardcode |
+| 3 | Answer 15 MCQs in `answers.csv` | ⬜ |
+| 4 | Write all sections of `REFLECTION.md` | ⬜ |
+| 5 | Lint clean + all CI jobs green | 🟨 |
+
+**Critical path:** Phase 1 → CI green → Phase 2 (CX3 benchmark) → Phase 4 (needs measured numbers). Phase 3 is independent.
+
+**Key constraints:** do not edit `integrate_serial.cpp`, `integrate.h`, `main()`, or `.github/workflows/`. Do not commit `build/`.
+
+---
+
 ## Introduction — Suggested reading order
 
 1. [[cluster/CX3 Overview]] — what the cluster is.
@@ -50,9 +76,10 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 **Assessments:**
 
 32. [[assessment/Assessment Overview]] — 100-pt rubric, thread ladder, grading formulas.
-33. [[assessment/A1 Integration]] — 20 pts, schedule sweep.
-34. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs taskloop.
-35. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
+33. [[assessment/A1 Progress]] — ⬜ A1 checklist and progress tracker *(active)*.
+34. [[assessment/A1 Integration]] — 20 pts, full technical reference for schedule sweep.
+35. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs taskloop.
+36. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
 
 ## Map by topic
 
@@ -70,7 +97,7 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 ```bash
 ssh ggf25@login.cx3.hpc.ic.ac.uk           # connect
 ml tools/prod GCC OpenMPI CMake            # full toolchain
-qsub assignment-1/evaluate.pbs            # submit A1
+qsub evaluate.pbs                          # submit A1 (run from repo root)
 qstat -u $USER                             # monitor
 OMP_NUM_THREADS=128 OMP_PROC_BIND=close OMP_PLACES=cores ./program
 hyperfine --warmup 1 --runs 5 './program' --export-json perf.json

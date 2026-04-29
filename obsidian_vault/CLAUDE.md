@@ -33,8 +33,21 @@ performance/     Week 1 performance topics
   False Sharing, NUMA First Touch, SIMD, Loop Transformations,
   Six Sources of Overhead, STREAM and HPL
 assessment/      A1 / A2 / A3 deliverables and scoring notes
-  Assessment Overview, A1 Integration, A2 Mandelbrot, A3 Jacobi
+  Assessment Overview
+  A1 Progress     ← active checklist/roadmap for Assessment 1 (start here)
+  A1 Integration  ← full technical reference for A1
+  A2 Mandelbrot, A3 Jacobi
 ```
+
+## Active assessment context
+
+Assessment 1 (numerical integration, 20 pts) is currently in progress. The primary working files are:
+- `../integrate.cpp` — parallelise `integrate_parallel()` here
+- `../answers.csv` — fill MCQ answers (qid,answer format)
+- `../tables.csv` — fill timing data from CX3 Rome benchmark
+- `../REFLECTION.md` — write all four sections (≥ 50 words each)
+
+Use `assessment/A1 Progress.md` as the ground truth for what is done and what is pending. Update the status checkboxes as phases complete. The branch is `ggf25`.
 
 ## Authoring conventions
 

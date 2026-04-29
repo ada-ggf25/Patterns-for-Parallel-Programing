@@ -83,7 +83,7 @@ Useful for confirming pinning *actually* happened rather than just hoping it did
 
 ## What the A1 PBS script sets
 
-The A1 evaluation PBS script (`assignment-1/evaluate.pbs`) sets:
+The A1 evaluation PBS script (`evaluate.pbs`, at the repo root) sets:
 
 ```bash
 #PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128

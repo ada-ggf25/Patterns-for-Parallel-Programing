@@ -65,6 +65,23 @@ RooflineEstimate rome_ceiling(double oi) {
 }
 ```
 
+## Theoretical peak vs HPL-achievable: which ceiling to use?
+
+Both numbers appear in the Rome table. They tell different stories:
+
+| Ceiling | Value | What it means |
+|---|---|---|
+| Theoretical peak | 4608 GFLOPs | Every FMA unit fully pipelined, AVX2, 128 cores, all at once — never achieved by real code |
+| HPL-achievable | 2896 GFLOPs (63 %) | The highest sustained DP throughput measured by vendor-tuned DGEMM (HPL) on this hardware |
+
+**For non-DGEMM code** (including A1 and A2), the HPL ceiling is the more honest comparison. Your scalar integration kernel will land at a small fraction of 4608 GFLOPs — but framing it against theoretical peak makes the gap look larger than it is. HPL represents "the best real code actually achieves on this hardware", so `achieved / 2896` is the fairer roofline fraction.
+
+Example: A1 achieves ~16 GFLOPs at 128T.
+- vs theoretical: 16 / 4608 ≈ 0.35 % — looks tiny.
+- vs HPL: 16 / 2896 ≈ 0.55 % — still low, but the ceiling is more realistic.
+
+Both fractions should be reported in REFLECTION Section 3. The HPL fraction is the "honest" one.
+
 ## Limitations of the model
 
 The roofline assumes a flat, average byte cost per kernel. It does not model:

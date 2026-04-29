@@ -11,9 +11,11 @@ The `schedule` clause controls how iterations of a `parallel for` are distribute
 | `dynamic, C` | Threads pull C-iter chunks from a queue on demand | Irregular cost |
 | `guided` | Chunks start large and shrink toward loop end | Cost decreasing toward loop end |
 | `auto` | Implementation decides | Rarely useful — use explicit |
-| `runtime` | Read `OMP_SCHEDULE` env var | Testing different schedules without recompile |
+| `runtime` | Read `OMP_SCHEDULE` env var at launch; falls back to **`static`** if the variable is unset | Testing different schedules without recompile — **do not leave in production/submission code** |
 
 `C` is the chunk size — a tuning parameter.
+
+> **`schedule(runtime)` trap:** Use it during a sweep to avoid recompiling. But if `OMP_SCHEDULE` is not set in the environment (e.g. the grader's shell), OpenMP silently reverts to `static`. Always hardcode the winning schedule before the final commit.
 
 ## The spike workload problem
 

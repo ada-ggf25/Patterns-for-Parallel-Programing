@@ -50,9 +50,9 @@ The grader checks these arithmetic identities within 2 %. This is an internal-co
 | Lint (clang-format, clang-tidy, cppcheck) | 4 | CI lint workflow |
 | README / English readability | 3 | Manual |
 
-## Grading branch: `feature/eval`
+## Grading branch: `ggf25`
 
-The grader snapshots the **`feature/eval`** branch at the end of day 5. Work on that branch from day 2. Pushing to `main` does not get graded.
+The grader snapshots the **`ggf25`** branch at the end of day 5. This is the student-specific branch created by GitHub Classroom. Pushing to `main` does not get graded.
 
 ## Commit history (academic integrity, 0 pts)
 
@@ -67,15 +67,17 @@ Commit history is reviewed for academic integrity — no marks deducted automati
 
 Aim for one or two meaningful commits per working session with descriptive one-line subjects. See `assessment/handouts/commit-history-guidance.md` for examples.
 
-## CI / GitHub Actions
+## CI / GitHub Actions (A1)
 
-Push to your branch to get formative feedback:
-- `snippets-build.yml` — build + correctness tests + TSan+Archer (Ubuntu)
-- `snippets-macos.yml` — build + tests (macOS)
-- `lint-cpp.yml` — clang-format
-- `lint-quarto.yml` — markdownlint + link check
+Push to your branch to get formative feedback. All jobs are in `.github/workflows/ci.yml`:
 
-Green CI is a necessary but not sufficient condition for full marks.
+- `Build & TSan correctness` — Clang-18 + TSan + Archer OMPT; correctness at {1,2,4,8,16} threads
+- `Static analysis & style` — clang-format-20, clang-tidy-20, cppcheck
+- `REFLECTION.md format` — required section headers present + ≥ 50 words each
+- `Language check` — English only in `.md` files and C++ comments
+- `Prevent committing build artifacts` — rejects `.o`, executables, `build/` directory
+
+Green CI is a necessary but not sufficient condition for full marks. Final performance grading is on CX3 Rome (no Rome CI on student forks).
 
 ## Hardware (Rome, CX3)
 
