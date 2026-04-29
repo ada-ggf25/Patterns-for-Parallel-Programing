@@ -1,0 +1,90 @@
+#!/bin/bash
+#PBS -N a2_sweep
+#PBS -l walltime=00:20:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128
+#PBS -l place=excl
+
+# Optional REFLECTION evidence sweep — tests schedule variants for parallel_for
+# and records tasks reference timings. Output goes to sweep-*.json files;
+# these are NOT read by the grader and do NOT need to be committed.
+#
+# PREREQUISITES (do these before qsub):
+#   1. In mandelbrot_for.cpp, change:
+#        schedule(dynamic, TILE)
+#      to:
+#        schedule(runtime)
+#      This lets OMP_SCHEDULE override the schedule at runtime.
+#   2. Commit: git commit -m "bench: temporarily use schedule(runtime) for sweep"
+#   3. Push and pull on CX3, then: qsub sweep.pbs
+#
+# AFTER reviewing results:
+#   4. Hardcode the winning schedule in mandelbrot_for.cpp
+#      (e.g., revert to schedule(dynamic, TILE), or switch to schedule(guided))
+#   5. Commit: git commit -m "bench: hardcode winning schedule after sweep"
+#   6. Run the formal benchmark: qsub evaluate.pbs
+#
+# Build directory: build_sweep/ — kept separate from build/ so the formal
+# evaluate.pbs run is not affected.
+
+set -euo pipefail
+
+module purge
+module load tools/prod GCC/13.3.0 CMake Python numactl
+
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v hyperfine >/dev/null 2>&1; then
+    echo "hyperfine not found; bootstrapping via cargo (one-off, ~3 min)…"
+    module load Rust 2>/dev/null || true
+    cargo install --locked hyperfine \
+        || { echo "error: cargo install hyperfine failed"; exit 1; }
+fi
+
+cd "$PBS_O_WORKDIR"
+
+rm -rf build_sweep
+export CC=gcc CXX=g++
+export CXXFLAGS="-O3 -march=znver2 -mavx2 -fopenmp -Wall -Wextra"
+cmake -S . -B build_sweep
+cmake --build build_sweep --target mandelbrot_for --target mandelbrot_tasks -j
+
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+# ── Section 1: parallel_for schedule sweep ────────────────────────────────────
+# OMP_SCHEDULE only takes effect when mandelbrot_for.cpp is compiled with
+# schedule(runtime). If the schedule is hardcoded (e.g., schedule(dynamic, TILE)),
+# all rows below will show the same time — a sign the prerequisite was skipped.
+
+echo "=== Section 1: parallel_for schedule sweep ==="
+for sched in "static" "dynamic,1" "dynamic,100" "guided"; do
+    safe="${sched//,/_}"   # e.g. "dynamic,100" → "dynamic_100" for filenames
+    for p in 1 16 64 128; do
+        echo "--- parallel_for schedule=${sched} @ ${p} threads ---"
+        OMP_NUM_THREADS=$p OMP_SCHEDULE="${sched}" \
+            hyperfine --warmup 1 --min-runs 3 \
+            --export-json "sweep-for-${safe}-${p}.json" \
+            "./build_sweep/mandelbrot_for"
+        tmin=$(python3 bin/hyperfine_min_time.py "sweep-for-${safe}-${p}.json")
+        echo "  schedule=${sched}, threads=${p}: ${tmin} s"
+    done
+done
+
+# ── Section 2: tasks reference sweep ─────────────────────────────────────────
+# grainsize is a compile-time value in the pragma — no env var can change it.
+# This section benchmarks the current grainsize(1) build at all thread counts
+# to supply the comparison data needed for REFLECTION Section 2.
+
+echo "=== Section 2: tasks (grainsize=1) reference sweep ==="
+for p in 1 16 64 128; do
+    echo "--- tasks @ ${p} threads ---"
+    OMP_NUM_THREADS=$p \
+        hyperfine --warmup 1 --min-runs 3 \
+        --export-json "sweep-tasks-gs1-${p}.json" \
+        "./build_sweep/mandelbrot_tasks"
+    tmin=$(python3 bin/hyperfine_min_time.py "sweep-tasks-gs1-${p}.json")
+    echo "  tasks grainsize=1, threads=${p}: ${tmin} s"
+done
+
+echo ""
+echo "✅ Sweep complete. Review sweep-for-*.json times to choose best schedule."
+echo "   Then hardcode the winner in mandelbrot_for.cpp and run evaluate.pbs."

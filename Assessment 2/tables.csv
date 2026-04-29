@@ -1,9 +1,9 @@
 thread_count,variant,measured_time_s,measured_speedup,measured_efficiency
-1,parallel_for,,1.00,1.00
-1,tasks,,1.00,1.00
-16,parallel_for,,,
-16,tasks,,,
-64,parallel_for,,,
-64,tasks,,,
-128,parallel_for,,,
-128,tasks,,,
+1,parallel_for,6.5982,1.00,1.00
+1,tasks,6.4334,1.00,1.00
+16,parallel_for,0.4221,15.63,0.98
+16,tasks,0.5627,11.43,0.71
+64,parallel_for,0.1144,57.68,0.90
+64,tasks,0.4409,14.59,0.23
+128,parallel_for,0.0659,100.12,0.78
+128,tasks,0.4430,14.52,0.113

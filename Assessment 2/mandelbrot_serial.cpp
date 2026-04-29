@@ -13,7 +13,8 @@
 #include "mandelbrot.h"
 
 namespace {
-struct cplx {
+struct cplx
+{
     double re;
     double im;
 };
@@ -31,18 +32,18 @@ inline int escape_iters(double cr, double ci)
     }
     return MAXITER;
 }
-}  // namespace
+} // namespace
 
 long mandelbrot_serial()
 {
     long outside = 0;
-    constexpr int J_HALF = NPOINTS / 2;        // upper half by symmetry
+    constexpr int J_HALF = NPOINTS / 2; // upper half by symmetry
     for (int i = 0; i < NPOINTS; ++i) {
         for (int j = 0; j < J_HALF; ++j) {
             const double cr = -2.0 + (3.0 * static_cast<double>(i) / NPOINTS);
             const double ci = -1.5 + (3.0 * static_cast<double>(j) / NPOINTS);
             if (escape_iters(cr, ci) < MAXITER) {
-                outside += 2;                  // mirror in lower half
+                outside += 2; // mirror in lower half
             }
         }
     }

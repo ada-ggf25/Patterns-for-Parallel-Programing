@@ -1,0 +1,153 @@
+-- The CXX compiler identification is GNU 14.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /sw-eb/software/GCCcore/14.3.0/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Configuring done (1.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /rds/general/user/ggf25/home/ppp-openmp-assessment-2-ada-ggf25/build_sweep
+[ 66%] Building CXX object CMakeFiles/mandelbrot_for.dir/mandelbrot_serial.cpp.o
+[ 66%] Building CXX object CMakeFiles/mandelbrot_for.dir/mandelbrot_for.cpp.o
+[100%] Linking CXX executable mandelbrot_for
+[100%] Built target mandelbrot_for
+[ 66%] Building CXX object CMakeFiles/mandelbrot_tasks.dir/mandelbrot_tasks.cpp.o
+[ 66%] Building CXX object CMakeFiles/mandelbrot_tasks.dir/mandelbrot_serial.cpp.o
+[100%] Linking CXX executable mandelbrot_tasks
+[100%] Built target mandelbrot_tasks
+=== Section 1: parallel_for schedule sweep ===
+--- parallel_for schedule=static @ 1 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      6.705 s ±  0.002 s    [User: 6.680 s, System: 0.012 s]
+  Range (min … max):    6.703 s …  6.707 s    3 runs
+ 
+  schedule=static, threads=1: 6.7031659266 s
+--- parallel_for schedule=static @ 16 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      1.202 s ±  0.000 s    [User: 6.750 s, System: 0.012 s]
+  Range (min … max):    1.201 s …  1.202 s    3 runs
+ 
+  schedule=static, threads=16: 1.20131932996 s
+--- parallel_for schedule=static @ 64 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     366.5 ms ±   0.7 ms    [User: 7109.8 ms, System: 33.2 ms]
+  Range (min … max):   365.1 ms … 367.4 ms    7 runs
+ 
+  schedule=static, threads=64: 0.36513782516000004 s
+--- parallel_for schedule=static @ 128 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     197.2 ms ±   1.0 ms    [User: 7642.6 ms, System: 73.5 ms]
+  Range (min … max):   195.8 ms … 199.7 ms    14 runs
+ 
+  schedule=static, threads=128: 0.19581386760000002 s
+--- parallel_for schedule=dynamic,1 @ 1 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      6.704 s ±  0.001 s    [User: 6.681 s, System: 0.011 s]
+  Range (min … max):    6.703 s …  6.705 s    3 runs
+ 
+  schedule=dynamic,1, threads=1: 6.70295973038 s
+--- parallel_for schedule=dynamic,1 @ 16 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     433.4 ms ±   1.5 ms    [User: 6716.5 ms, System: 16.4 ms]
+  Range (min … max):   432.0 ms … 436.2 ms    6 runs
+ 
+  schedule=dynamic,1, threads=16: 0.43196371858 s
+--- parallel_for schedule=dynamic,1 @ 64 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     119.5 ms ±   0.5 ms    [User: 6771.3 ms, System: 30.4 ms]
+  Range (min … max):   118.7 ms … 120.3 ms    22 runs
+ 
+  schedule=dynamic,1, threads=64: 0.11866221950000001 s
+--- parallel_for schedule=dynamic,1 @ 128 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      69.6 ms ±   0.6 ms    [User: 6919.9 ms, System: 85.7 ms]
+  Range (min … max):    68.4 ms …  71.2 ms    36 runs
+ 
+  schedule=dynamic,1, threads=128: 0.06837408108 s
+--- parallel_for schedule=dynamic,100 @ 1 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      6.711 s ±  0.010 s    [User: 6.689 s, System: 0.012 s]
+  Range (min … max):    6.702 s …  6.721 s    3 runs
+ 
+  schedule=dynamic,100, threads=1: 6.7019229601 s
+--- parallel_for schedule=dynamic,100 @ 16 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     567.1 ms ±   1.6 ms    [User: 6781.4 ms, System: 15.5 ms]
+  Range (min … max):   564.4 ms … 568.4 ms    5 runs
+ 
+  schedule=dynamic,100, threads=16: 0.56443139582 s
+--- parallel_for schedule=dynamic,100 @ 64 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     467.4 ms ±   0.9 ms    [User: 7105.2 ms, System: 34.1 ms]
+  Range (min … max):   465.6 ms … 468.3 ms    6 runs
+ 
+  schedule=dynamic,100, threads=64: 0.46561430024 s
+--- parallel_for schedule=dynamic,100 @ 128 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     467.8 ms ±   0.9 ms    [User: 7623.2 ms, System: 80.3 ms]
+  Range (min … max):   466.4 ms … 468.9 ms    6 runs
+ 
+  schedule=dynamic,100, threads=128: 0.46638942822000007 s
+--- parallel_for schedule=guided @ 1 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      6.704 s ±  0.003 s    [User: 6.682 s, System: 0.011 s]
+  Range (min … max):    6.701 s …  6.706 s    3 runs
+ 
+  schedule=guided, threads=1: 6.7006852957600005 s
+--- parallel_for schedule=guided @ 16 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     551.6 ms ±   2.2 ms    [User: 6788.8 ms, System: 18.4 ms]
+  Range (min … max):   547.9 ms … 553.5 ms    5 runs
+ 
+  schedule=guided, threads=16: 0.54787289444 s
+--- parallel_for schedule=guided @ 64 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):     153.4 ms ±   0.9 ms    [User: 7125.5 ms, System: 33.6 ms]
+  Range (min … max):   152.0 ms … 154.8 ms    18 runs
+ 
+  schedule=guided, threads=64: 0.1520001085 s
+--- parallel_for schedule=guided @ 128 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_for
+  Time (mean ± σ):      87.1 ms ±   0.6 ms    [User: 7615.0 ms, System: 96.4 ms]
+  Range (min … max):    86.2 ms …  88.9 ms    30 runs
+ 
+  schedule=guided, threads=128: 0.08621220218 s
+=== Section 2: tasks (grainsize=1) reference sweep ===
+--- tasks @ 1 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_tasks
+  Time (mean ± σ):      6.564 s ±  0.005 s    [User: 6.543 s, System: 0.011 s]
+  Range (min … max):    6.559 s …  6.568 s    3 runs
+ 
+  tasks grainsize=1, threads=1: 6.559126157620001 s
+--- tasks @ 16 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_tasks
+  Time (mean ± σ):     577.6 ms ±   1.2 ms    [User: 6633.7 ms, System: 11.2 ms]
+  Range (min … max):   575.7 ms … 579.0 ms    5 runs
+ 
+  tasks grainsize=1, threads=16: 0.5756862191200001 s
+--- tasks @ 64 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_tasks
+  Time (mean ± σ):     457.2 ms ±   1.3 ms    [User: 6963.6 ms, System: 28.7 ms]
+  Range (min … max):   454.7 ms … 458.6 ms    6 runs
+ 
+  tasks grainsize=1, threads=64: 0.45472500816000005 s
+--- tasks @ 128 threads ---
+Benchmark 1: ./build_sweep/mandelbrot_tasks
+  Time (mean ± σ):     459.4 ms ±   1.2 ms    [User: 7518.7 ms, System: 66.1 ms]
+  Range (min … max):   457.9 ms … 460.6 ms    6 runs
+ 
+  tasks grainsize=1, threads=128: 0.45786067544000003 s
+
+✅ Sweep complete. Review sweep-for-*.json times to choose best schedule.
+   Then hardcode the winner in mandelbrot_for.cpp and run evaluate.pbs.
+
+====================================
+CPU Time used: 00:15:30
+CPU Percent: 742%
+Memory usage: 176388kb
+Approx Power usage: 0.003
+Walltime usage: 00:03:32
+
+====================================

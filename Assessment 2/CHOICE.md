@@ -1,8 +1,7 @@
 ---
-recommended: tasks
-measured_tasks_s: 0.00
-measured_for_s: 0.00
-justification_keyword: irregular_load_balance
+recommended: parallel_for
+measured_tasks_s: 0.4430
+measured_for_s: 0.0659
 ---
 
 <!--
@@ -36,6 +35,10 @@ for the perf-component score against the published `T_ref` times.)
 
 ## Justification (≤ 200 words)
 
-Explain your recommendation in plain English. This text is not auto-scored, but it's what the instructor reads when spot-checking and what you get credit for via the REFLECTION-prompt route.
+At 128 threads on CX3 Rome (AMD EPYC 7742), `parallel_for` with `schedule(dynamic, 1)` ran in 0.0659 s versus 0.4430 s for the `taskloop` variant — a 6.7× speedup advantage in favour of `parallel_for`.
 
-<!-- your justification here -->
+The tasks variant uses `taskloop grainsize(1)` over the 50 outer tile iterations, generating exactly 50 tasks. With 128 threads available, 78 threads receive no initial task and must steal work; once the 50 tasks are claimed the work queue is empty, so scaling plateaus beyond ~50 threads. The efficiency at 128T is only 0.11 (speedup 14.5×).
+
+By contrast, `schedule(dynamic, 1)` divides the 5000 rows into 5000 individual chunks. Each of the 128 threads continuously picks up the next unprocessed row from the shared queue. Because the per-row cost varies dramatically near the Mandelbrot boundary, fine-grained dynamic scheduling absorbs this irregularity without leaving any thread idle. Efficiency at 128T is 0.78 (speedup 100×), near-linear.
+
+Both variants produce identical output (`outside = 20807396`). Given the measured evidence, `parallel_for` is the clear recommendation for this workload at high thread counts.

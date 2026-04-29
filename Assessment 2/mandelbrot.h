@@ -20,7 +20,7 @@
 // Grid is NPOINTS × NPOINTS; area estimated by counting escaped points.
 constexpr int NPOINTS = 5000;
 constexpr int MAXITER = 1000;
-constexpr int TILE = 100;                 // 50 × 25 upper-half tile grid
+constexpr int TILE = 100; // 50 × 25 upper-half tile grid
 
 // Reference serial — do not modify. Defined in mandelbrot_serial.cpp.
 long mandelbrot_serial();
