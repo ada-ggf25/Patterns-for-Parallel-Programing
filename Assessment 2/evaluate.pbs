@@ -1,0 +1,62 @@
+#!/bin/bash
+#PBS -N a2_mandelbrot
+#PBS -l walltime=00:30:00
+#PBS -l select=1:ncpus=128:mem=400gb:cpu_type=rome:mpiprocs=1:ompthreads=128
+#PBS -l place=excl
+
+# Times BOTH variants (mandelbrot_for + mandelbrot_tasks) at Rome's
+# canonical thread ladder. The grader picks the faster variant for
+# roofline scoring.
+
+set -euo pipefail
+
+module purge
+module load tools/prod GCC/13.3.0 CMake Python numactl
+
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v hyperfine >/dev/null 2>&1; then
+    echo "hyperfine not found; bootstrapping via cargo (one-off, ~3 min)…"
+    module load Rust 2>/dev/null || true
+    cargo install --locked hyperfine \
+        || { echo "error: cargo install hyperfine failed"; exit 1; }
+fi
+
+cd "$PBS_O_WORKDIR"
+
+rm -rf build
+export CC=gcc CXX=g++
+export CXXFLAGS="-O3 -march=znver2 -mavx2 -fopenmp -Wall -Wextra"
+cmake -S . -B build
+cmake --build build --target mandelbrot_for --target mandelbrot_tasks -j
+
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+echo '{"results": [' > perf-results-a2.json
+first=1
+# CMake produces binaries `mandelbrot_for` and `mandelbrot_tasks`; the grader
+# and CHOICE.md use the semantic label `parallel_for` (vs `tasks`). Map the
+# binary suffix → semantic label in one place to keep the perf JSON keyed
+# by the label CHOICE.md / the grader expect.
+for variant in for tasks; do
+    binary="./build/mandelbrot_${variant}"
+    case "$variant" in
+        for)   label="parallel_for" ;;
+        tasks) label="tasks" ;;
+    esac
+    for p in 1 16 64 128; do
+        echo "=== A2 ${label} @ $p threads ==="
+        OMP_NUM_THREADS=$p hyperfine --warmup 1 --min-runs 3 \
+            --export-json "mandelbrot-${label}-$p.json" \
+            "$binary"
+
+        tmin=$(python3 bin/hyperfine_min_time.py "mandelbrot-${label}-$p.json")
+        echo "  min time: $tmin s"
+        [ $first -eq 0 ] && echo ',' >> perf-results-a2.json || first=0
+        printf '  {"thread_count": %d, "variant": "%s", "time_s": %s}' \
+            "$p" "$label" "$tmin" >> perf-results-a2.json
+    done
+done
+echo ']}' >> perf-results-a2.json
+
+echo "✅ A2 benchmark complete — see perf-results-a2.json"
