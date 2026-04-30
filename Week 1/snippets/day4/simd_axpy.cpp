@@ -3,15 +3,17 @@
 
 // SAXPY / DAXPY with `#pragma omp simd`.
 //
-// `a`, `b`, `c` are assumed aligned to at least 64 bytes by the caller.
-// `safelen(8)` asserts that at least 8 consecutive iterations have no
-// cross-iteration data dependence — safe here because `x[i]` and `y[i]`
-// read distinct elements and `r[i]` writes a distinct element per iter.
+// The `simd` directive asserts to the compiler that the loop iterations
+// are independent and can be executed in parallel SIMD lanes — `x[i]`
+// and `y[i]` read distinct elements and `r[i]` writes a distinct
+// element per iteration. The compiler emits unaligned vector loads /
+// stores, which on Zen 2 (and any post-Haswell Intel) cost essentially
+// the same as aligned ones — alignment tweaks are out of scope here.
 
 // snippet-begin: simd_only
 void axpy_simd(double alpha, const double* x, const double* y, double* r, std::size_t n)
 {
-#pragma omp simd aligned(x, y, r : 64) safelen(8)
+#pragma omp simd
     for (std::size_t i = 0; i < n; ++i) {
         r[i] = (alpha * x[i]) + y[i];
     }
@@ -24,8 +26,7 @@ void axpy_simd(double alpha, const double* x, const double* y, double* r, std::s
 // snippet-begin: parallel_simd
 void axpy_parallel_simd(double alpha, const double* x, const double* y, double* r, std::size_t n)
 {
-#pragma omp parallel for simd aligned(x, y, r : 64) safelen(8) default(none)          \
-    firstprivate(alpha, x, y, r, n)
+#pragma omp parallel for simd default(none) firstprivate(alpha, x, y, r, n)
     for (std::size_t i = 0; i < n; ++i) {
         r[i] = (alpha * x[i]) + y[i];
     }

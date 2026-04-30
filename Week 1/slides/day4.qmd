@@ -114,65 +114,15 @@ The canonical idiom: one read before, one read after, *outside* the parallel reg
 
 ## Timing — adding a warm-up region
 
-Wrap the timed region with a *warm-up* region so the runtime startup doesn't count:
+The first measurement of any kernel pays a stack of one-time costs the second one doesn't. Wrap the timed region with a *warm-up* that mirrors the real access pattern, then throw away its wall-clock:
 
 {{< include _partials/day4/omp_get_wtime_timing__time_kernel_warmup.qmd >}}
 
-- The first parallel region pays a one-time team-creation cost (~µs); without warm-up, your first measurement can be 5–10× slower.
-- Throw away the warm-up's wall-clock and only `omp_get_wtime` *after* the warm-up.
-- The warm-up loop should touch the same memory the timed loop will, so caches and NUMA placement are also warm.
-
-## Timing — pairing two timings in a struct
-
-{{< include _partials/day4/omp_get_wtime_timing__compare_struct.qmd >}}
-
-- Returning a struct (rather than a single ratio) preserves both raw numbers — the caller can compute ratio, speedup, or absolute difference as the analysis demands.
-- The two field names (`fast_s`, `slow_s`) are conventional but not enforced — the harness on the next slide labels by *position*, not by which actually turned out faster.
-
-## Timing — the comparison driver
-
-{{< include _partials/day4/omp_get_wtime_timing__compare_function.qmd >}}
-
-- Both implementations route through the same `time_kernel_seconds` so they pay the same warm-up cost and the same timed-region overhead — the two timings are directly comparable.
-- For noisy measurements, run each side multiple times and take the minimum (next slide).
-
-## The warm-up trick
-
-```cpp
-// Warm-up: pay first-region runtime startup once, throw the result away.
-#pragma omp parallel
-{ /* trivial work */ }
-
-// Now measure the *steady-state* parallel region.
-const double t0 = omp_get_wtime();
-#pragma omp parallel for ...
-for (...) { ... }
-const double t1 = omp_get_wtime();
-```
-
-Without warm-up, your first measurement carries the team-creation cost (~µs) and can be 5–10× slower than the second. For a hyperfine harness, `--warmup 1` does the same job.
-
-## Comparing two implementations
-
-```cpp
-// Run each k times, take the minimum.
-auto bench = [](auto fn) {
-    double best = 1e30;
-    for (int trial = 0; trial < 3; ++trial) {
-        const double t0 = omp_get_wtime();
-        fn();
-        const double t1 = omp_get_wtime();
-        best = std::min(best, t1 - t0);
-    }
-    return best;
-};
-
-const double t_a = bench(impl_a);
-const double t_b = bench(impl_b);
-const double ratio = t_b / t_a;        // > 1 if B is slower
-```
-
-Min-of-k beats single-run on noisy hardware (queue contention, cron jobs, …).
+- **NUMA first-touch placement**: physical pages are allocated on the NUMA node of whichever thread first writes to them. Without a parallel warm-up, pages may sit on the main thread's node — remote-node access is 1.5–3× slower on Rome.
+- **Page faults**: ~10 µs per 4 KB page; a 100 MB array costs ~0.5 s.
+- **CPU frequency / Turbo settling**: cores ramp clock from idle. Short kernels measured cold land below steady-state.
+- **TLB / cache warming**: marginal for streaming kernels (each iteration evicts the last).
+- **OpenMP team creation**: tens of µs to spin up the worker threads.
 
 ## Roofline — proper treatment {visibility="uncounted"}
 
@@ -213,6 +163,16 @@ What it does:
 
 A useful rule of thumb: **theoretical peak** is what physics allows, **HPL** is what vendor BLAS achieves, **your code** lives somewhere lower.
 
+::: {.callout-tip}
+## Deep dive: Top500
+
+[https://top500.org/](https://top500.org/) — biannual ranking (ISC in June, SC in November) of the world's largest supercomputers since 1993.
+
+- Ranked by **Rmax** (HPL achieved); efficiency `Rmax/Rpeak` typically 65–85 % — same ratio as our 63 % on Rome.
+- Exascale era: leaders (Frontier, Aurora, El Capitan) at ≥1 EFLOPs ≈ 10⁶ × one Rome node.
+- Sister lists: **HPCG** (memory-bound; reorders the ranking) and **Green500** (FLOPs/W).
+:::
+
 ## HPL on Rome — what we measured
 
 Run on `cx3-4-13`, 2026-04-26 — `docs/rome-hpl.pbs`:
@@ -239,7 +199,7 @@ A1 and A2 are *compute-bound in principle* but are not DGEMM. They have spike re
 
 ## Bandwidth-bound regime
 
-For low-OI kernels (A3 Jacobi, STREAM, dense matrix-vector):
+For low-OI kernels (A3 Jacobi, STREAM):
 
 - Bottleneck: how fast the memory subsystem can deliver bytes.
 - Adding compute won't help — the FPU is starving.
@@ -265,7 +225,6 @@ STREAM measures four kernels. They probe the memory subsystem differently and gi
 
 - **Closest access pattern** to typical scientific kernels (mixed read/write with compute). A3's stencil is even more read-heavy (7R + 1W per grid point), so Triad is conservative.
 - **Standard practice** in the literature. McCalpin (STREAM author), the Williams/Waterman/Patterson roofline paper, and tools like LIKWID's `roofline` all default to Triad.
-- **Honest ceiling**. Using Copy's 337 GB/s would inflate the ceiling and unfairly penalise A3 students for a hardware quirk that has nothing to do with their kernel quality.
 
 ## Computing OI — Jacobi review
 
@@ -322,26 +281,17 @@ Two threads writing distinct 8-byte slots that *happen to land on the same line*
 ## False sharing — the mechanism
 
 ```cpp
-struct Counter { double v; };       // 8 B
-Counter buckets[N_THREADS];
+double buckets[N_THREADS];           // 8 B per slot
 
 #pragma omp parallel
 {
     int tid = omp_get_thread_num();
     for (int i = 0; i < BIG; ++i)
-        buckets[tid].v += 1.0;       // writing my bucket only
+        buckets[tid] += 1.0;          // writing my bucket only
 }
 ```
 
 Each thread writes its own logical counter. But 8 buckets pack onto ONE 64-byte line — every write invalidates the line in 7 other caches. Throughput collapses to ~1 update per memory round-trip.
-
-## False sharing — the cache-line picture
-
-![](images/false_sharing_cache_lines.png){width=85%}
-
-Top — packed: 4 threads share one cache line; every write triggers MESI invalidation traffic to the other three.
-
-Bottom — `alignas(64)`: each thread's accumulator on its own line; no inter-thread traffic.
 
 ## False sharing — static walkthrough
 
@@ -351,14 +301,15 @@ Bottom — `alignas(64)`: each thread's accumulator on its own line; no inter-th
 - `Padded` has `alignas(64)` + 56 bytes of filler — `sizeof(Padded) == 64`. One per cache line.
 - The kernel below is *identical* across the two; only the layout differs.
 
-## Live demo: false sharing on Rome {visibility="uncounted"}
-
-Live demo (instructor): two runs of the false-sharing harness at 64 threads on a Rome login node:
-
-- `bad_accum`: threads write into a plain `double[]` — eight per cache line, with cross-thread contention.
-- `good_accum`: threads write `alignas(64)` `Padded` accumulators.
-
 Expect a 5–10× speedup just from the padding. The kernels are otherwise byte-identical. **No algorithm change** — only data layout.
+
+## False sharing — the cache-line picture
+
+![](images/false_sharing_cache_lines.png){width=85%}
+
+Top — packed: 4 threads share one cache line; every write triggers MESI invalidation traffic to the other three.
+
+Bottom — `alignas(64)`: each thread's accumulator on its own line; no inter-thread traffic.
 
 ## NUMA refresher — Rome's 8 domains
 
@@ -498,25 +449,6 @@ for (int i = 0; i < N; ++i) {
 }
 ```
 
-## Tile / blocking — preview
-
-For memory-bound kernels (A3), *tiling* improves cache reuse:
-
-```cpp
-// without tiling: streams the whole grid through cache N times
-for (size_t step = 0; step < NSTEPS; ++step)
-    for (size_t i = 0; i < NX; ++i)
-        for (size_t j = 0; j < NY; ++j) ...
-
-// with tiling: process small blocks; reuse them across timesteps
-for (size_t step = 0; step < NSTEPS; ++step)
-    for (size_t ii = 0; ii < NX; ii += TILE)
-        for (size_t jj = 0; jj < NY; jj += TILE)
-            for (size_t i = ii; i < ii + TILE; ++i) ...
-```
-
-Day-5 polish territory. Not required for A3-core; rewarding for the A3 extension if you go that route.
-
 ## SIMD basics — AVX2 lanes
 
 ![](images/simd_lanes_avx2.png){width=85%}
@@ -540,18 +472,6 @@ Day-5 polish territory. Not required for A3-core; rewarding for the A3 extension
 - `parallel for simd` distributes iterations across threads, **then** vectorises within each thread's chunk.
 - Two levels of parallelism for free, when the loop is amenable.
 - A1's integration would benefit from this pattern; A3-extension/simd is exactly this on the Jacobi inner loop.
-
-## `aligned` and `safelen`
-
-```cpp
-#pragma omp simd aligned(x, y, r : 64) safelen(8)
-for (...) ...
-```
-
-- `aligned(x, y, r : 64)` — promise to the compiler that `x`, `y`, `r` are 64-byte-aligned. Compiler emits aligned loads/stores (faster). **Misalign at runtime → segfault.**
-- `safelen(8)` — assert at least 8 consecutive iterations are dependence-free. Lets the compiler fold loop unrolling + vectorisation.
-
-Use both when you can; they enable the strongest vectorisation.
 
 ## `declare simd` — annotate the function
 
@@ -581,7 +501,7 @@ hot.cpp:38:5: remark: loop not vectorized: cannot identify array bounds [-Rpass-
 ```
 
 - `-Rpass=loop-vectorize` — show what *did* vectorise (reassuring).
-- `-Rpass-missed=loop-vectorize` — show what *didn't*, with the reason. Often actionable: change pointer types, add `safelen`, fix aliasing.
+- `-Rpass-missed=loop-vectorize` — show what *didn't*, with the reason. Often actionable: add `#pragma omp simd`, change pointer types, fix aliasing.
 
 ## A3 brief — core (25 pts)
 
@@ -603,7 +523,7 @@ Pick **ONE** of:
 
 - `numa_first_touch` — swap naive init for parallel-init; measure the speedup.
 - `false_sharing` — find a per-thread accumulator with packed layout; pad it; measure the speedup.
-- `simd` — annotate the innermost loop with `simd` + `aligned` + `safelen`; measure.
+- `simd` — annotate the innermost loop with `#pragma omp simd`; measure.
 
 Declare your pick in `EXTENSION.md`'s structured header. CI builds + benches both `before` and `after` variants of *only* your chosen branch.
 
@@ -643,7 +563,7 @@ Bucket buckets[N_THREADS];
 for (size_t i = 0; i < n; ++i) r[i] = a*x[i] + y[i];
 
 // after
-#pragma omp simd aligned(x, y, r : 64) safelen(8)
+#pragma omp simd
 for (size_t i = 0; i < n; ++i) r[i] = a*x[i] + y[i];
 ```
 
@@ -665,21 +585,11 @@ delta_percent: 37.8
 <your prose>
 ```
 
-The grader checks internal consistency: `delta_percent` must be consistent with `before_time_s` and `after_time_s` within ±10 %. Canonical timings are *not* compared against your reported numbers — your own self-benchmark is the basis. The grader's separate **reproducibility check** is consulted only for performance scoring, not for grading your CHOICE/REFLECTION numbers.
-
-## Delta-percent formula
-
 $$\text{delta\_percent} \;=\; \frac{\text{before} - \text{after}}{\text{before}} \times 100$$
 
-Worked example:
+The grader checks internal consistency: `delta_percent` must agree with `before_time_s` / `after_time_s` within ±10 %. Canonical timings are *not* compared against your reported numbers — your own self-benchmark is the basis (the separate reproducibility check is consulted only for performance scoring).
 
-```
-before_time_s:  4.80
-after_time_s:   3.20
-delta_percent: (4.80 − 3.20) / 4.80 × 100 = 33.3 %
-```
-
-Sign convention: positive means "improvement". If your "after" is *slower*, you'll see a negative delta — and you should explain what went wrong in REFLECTION.
+Sign convention: positive = improvement; if "after" is slower you'll see a negative delta — explain what went wrong in REFLECTION.
 
 ## Final thoughts before lunch {visibility="uncounted"}
 

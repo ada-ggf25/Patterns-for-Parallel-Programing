@@ -101,7 +101,7 @@ hello-world running at multiple thread counts.
 
 *Deck: [day 4](day4.html). Coursework: [`assignment-3/`](https://github.com/ese-ada-lovelace-2025/ppp-openmp-assessment/tree/main/assignment-3) — 3D Jacobi (core + extension).*
 
-**Morning lecture** — A2 retrospective; six sources of parallel-region overhead and how to use `omp_get_wtime`; roofline model proper treatment with Rome ceilings; `collapse(N)` and loop transformations; cache coherency + live false-sharing demo; NUMA first-touch on Rome's 8 domains; SIMD (`#pragma omp simd`, `declare simd`, `aligned`, `safelen`); A3 brief.
+**Morning lecture** — A2 retrospective; six sources of parallel-region overhead and how to use `omp_get_wtime`; roofline model proper treatment with Rome ceilings; `collapse(N)` and loop transformations; cache coherency + live false-sharing demo; NUMA first-touch on Rome's 8 domains; SIMD (`#pragma omp simd`, `declare simd`); A3 brief.
 
 **Afternoon — A3 lab.** Parallelise the Jacobi step (`assignment-3/core/`); pick ONE extension (NUMA / false-sharing / SIMD); implement before/after variants; run a scaling study at `{1, 16, 64, 128}` on Rome; commit `perf-results-a3.json`; fill in `EXTENSION.md`. Instructor on hand.
 

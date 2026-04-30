@@ -21,8 +21,17 @@ SNIPPET_CPPS := $(shell find snippets -name '*.cpp' \
                   -not -path '*/build/*' \
                   -not -path '*/third_party/*')
 
-partials: $(SNIPPET_CPPS) slides/tools/build_partials.py
+# Stamp file marks the last successful run of build_partials.py. Any
+# .html rule that lists this as a prerequisite will re-render when a
+# snippet changes, even though the .qmd source is untouched (Quarto
+# `{{< include >}}` shortcodes pull partials at render time).
+PARTIALS_STAMP := slides/_partials/.stamp
+
+$(PARTIALS_STAMP): $(SNIPPET_CPPS) slides/tools/build_partials.py
 	python3 slides/tools/build_partials.py
+	@mkdir -p $(dir $@) && touch $@
+
+partials: $(PARTIALS_STAMP)
 
 # --- generated plots --------------------------------------------------------
 # Plot scripts in slides/tools/render_*.py emit committed PNGs under
@@ -39,11 +48,13 @@ all: html
 
 # --- slides -----------------------------------------------------------------
 
-html: partials $(HTML)
+html: $(HTML)
 
 # Each .qmd carries its own format in its YAML header (revealjs for decks,
-# html for the landing page), so we don't pass --to here.
-%.html: %.qmd _quarto.yml
+# html for the landing page), so we don't pass --to here. The stamp dep
+# ensures partials are regenerated, AND the .html re-renders, when a
+# snippet changes.
+%.html: %.qmd _quarto.yml $(PARTIALS_STAMP)
 	quarto render $<
 
 # Live-preview the active deck in a browser (pass DECK=slides/day2 etc.).

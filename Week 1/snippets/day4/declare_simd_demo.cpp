@@ -32,7 +32,7 @@ double smooth_step(double x)
 void apply_smooth_step(std::vector<double>& v)
 {
     const std::size_t n = v.size();
-#pragma omp simd safelen(8)
+#pragma omp simd
     for (std::size_t i = 0; i < n; ++i) {
         v[i] = smooth_step(v[i]);
     }
@@ -44,7 +44,7 @@ void apply_smooth_step(std::vector<double>& v)
 void apply_smooth_step_threaded(std::vector<double>& v)
 {
     const std::size_t n = v.size();
-#pragma omp parallel for simd default(none) shared(v, n) safelen(8)
+#pragma omp parallel for simd default(none) shared(v, n)
     for (std::size_t i = 0; i < n; ++i) {
         v[i] = smooth_step(v[i]);
     }

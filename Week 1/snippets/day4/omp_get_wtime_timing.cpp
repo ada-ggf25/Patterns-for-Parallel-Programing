@@ -47,25 +47,3 @@ double time_kernel_seconds(std::vector<double>& v)
     return t1 - t0;
     // snippet-end: time_kernel_timed
 }
-
-// snippet-begin: compare_struct
-// Pair both timings in a struct so the caller can compute ratio,
-// speedup, or absolute diff as needed.
-struct TimingPair {
-    double fast_s;
-    double slow_s;
-};
-// snippet-end: compare_struct
-
-// snippet-begin: compare_function
-TimingPair compare_two_implementations(std::size_t n)
-{
-    std::vector<double> a(n);
-    std::vector<double> b(n);
-
-    const double t_fast = time_kernel_seconds(a);
-    const double t_slow = time_kernel_seconds(b);
-
-    return {t_fast, t_slow};
-}
-// snippet-end: compare_function
