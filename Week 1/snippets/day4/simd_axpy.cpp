@@ -6,9 +6,12 @@
 // The `simd` directive asserts to the compiler that the loop iterations
 // are independent and can be executed in parallel SIMD lanes — `x[i]`
 // and `y[i]` read distinct elements and `r[i]` writes a distinct
-// element per iteration. The compiler emits unaligned vector loads /
-// stores, which on Zen 2 (and any post-Haswell Intel) cost essentially
-// the same as aligned ones — alignment tweaks are out of scope here.
+// element per iteration.
+//
+// For SIMD-friendly memory, callers should allocate aligned: `posix_memalign(&raw,
+// 64, n * sizeof(double))` (64 = cache-line size on Rome; covers AVX2). On
+// Zen 2 unaligned vector loads cost ~the same as aligned, so we don't bother
+// with the `aligned()` clause here; on ARM / older Intel it would matter.
 
 // snippet-begin: simd_only
 void axpy_simd(double alpha, const double* x, const double* y, double* r, std::size_t n)

@@ -1,44 +1,55 @@
 #include <cstddef>
+#include <cstdlib>
 #include <omp.h>
-#include <vector>
 
 // Demonstrates NUMA first-touch policy: a page is placed on the NUMA node
-// of the thread that writes to it *first*, not the thread that allocates.
+// of the thread that *first writes* to it, not the thread that allocates.
 //
-// `init_serial`     — only the master thread writes during init, so all
-//                     pages land on one NUMA node. Later parallel access
-//                     pays cross-node traffic for threads on other sockets.
-// `init_first_touch`— each thread initialises the region it will later
-//                     read, so pages are distributed across NUMA nodes.
+// `std::vector<T>(N)` value-initialises every element — that loop runs on
+// the constructing thread (master), counts as the first touch, and pre-empts
+// any later parallel-init. To exercise first-touch correctly we allocate
+// *uninitialised* memory via `posix_memalign` and let a parallel-for do
+// the first write.
 //
-// We cannot directly verify placement from a portable userspace test; the
-// day-4 slides show timings side-by-side on Rome. Here we just sanity-check
-// that both produce identical contents.
+// 64-byte alignment is the universal answer on Rome: cache-line size +
+// covers AVX2's 32-byte vector width + doubles as a false-sharing
+// prevention hint. Same number used by `posix_memalign` callers across
+// the day-4 SIMD cluster.
 
-void init_serial(std::vector<double>& v)
+// snippet-begin: allocate
+// Allocate `n` doubles aligned to 64 bytes. Returns *uninitialised* memory
+// — no pages are mapped to any NUMA node until something first-writes.
+// Caller owns and must `std::free`.
+double* aligned_alloc_double(std::size_t n)
 {
-    for (std::size_t i = 0; i < v.size(); ++i) {
-        v[i] = static_cast<double>(i);
+    void* raw = nullptr;
+    if (posix_memalign(&raw, 64, n * sizeof(double)) != 0) {
+        return nullptr;
     }
+    return static_cast<double*>(raw);
 }
+// snippet-end: allocate
 
 // snippet-begin: parallel_init
-void init_first_touch(std::vector<double>& v)
+// Each thread first-touches the slice it will later read/write.
+// Pages distribute across the team's NUMA domains automatically.
+void init_first_touch(double* u, std::size_t n)
 {
-#pragma omp parallel for default(none) shared(v)
-    for (std::size_t i = 0; i < v.size(); ++i) {
-        v[i] = static_cast<double>(i);
+#pragma omp parallel for default(none) shared(u, n)
+    for (std::size_t i = 0; i < n; ++i) {
+        u[i] = static_cast<double>(i);
     }
 }
 // snippet-end: parallel_init
 
 // snippet-begin: consumer
-double sum_parallel(const std::vector<double>& v)
+// Match the init's traversal pattern; each thread reads the slice it touched.
+double sum_parallel(const double* u, std::size_t n)
 {
     double s = 0.0;
-#pragma omp parallel for default(none) shared(v) reduction(+ : s)
-    for (std::size_t i = 0; i < v.size(); ++i) {
-        s += v[i];
+#pragma omp parallel for default(none) shared(u, n) reduction(+ : s)
+    for (std::size_t i = 0; i < n; ++i) {
+        s += u[i];
     }
     return s;
 }

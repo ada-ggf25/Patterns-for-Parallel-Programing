@@ -323,48 +323,61 @@ Bottom — `alignas(64)`: each thread's accumulator on its own line; no inter-th
 
 ## First-touch policy
 
-Linux places a page on the NUMA node of the thread that **first writes** to it — not the thread that calls `new`/`malloc`/`std::vector::resize`.
+Linux places a page on the NUMA node of the thread that **first writes** to it — not the thread that calls `new`/`malloc`/`posix_memalign`.
 
 ```cpp
-std::vector<double> u(NX*NY*NZ);     // allocation only — pages not yet touched
-// later, in a parallel region:
-#pragma omp parallel for
-for (size_t i = 0; i < u.size(); ++i)
-    u[i] = 0.0;                       // each page is first-touched here
-```
+// posix_memalign returns *uninitialised* memory — no pages touched yet.
+void* raw = nullptr;
+posix_memalign(&raw, 64, n * sizeof(double));
+double* u = static_cast<double*>(raw);
 
-The first store to each page is what binds it to a NUMA domain. *Who* does that store determines locality for the rest of the program's lifetime.
-
-## First-touch — naive (single-threaded) init
-
-```cpp
-std::vector<double> u(NX*NY*NZ);
-
-// init on master thread only (default if you don't think about it)
-for (size_t i = 0; i < u.size(); ++i)
+// The first write happens here, in parallel — pages distribute across
+// the team's NUMA domains.
+#pragma omp parallel for default(none) shared(u, n)
+for (size_t i = 0; i < n; ++i)
     u[i] = 0.0;
-
-// later, computation in a parallel region
-#pragma omp parallel for
-for (size_t i = 0; i < u.size(); ++i)
-    u[i] = stencil(u, i);              // reads cross NUMA domains
 ```
 
-All pages now live on the master's NUMA node. When 128 threads access them, 7/8 of those accesses cross the NUMA fabric.
+The first store to each page is what binds it to a NUMA domain. *Who* does that store determines locality for the rest of the program's lifetime. (Note we use `posix_memalign` not `std::vector<double>(n)` — the constructor would value-initialise from the master and pre-empt our parallel first-touch. Next slide.)
 
-## First-touch — parallel init
+## First-touch — the `std::vector` trap
+
+```cpp
+std::vector<double> u(n);            // ← value-initialises every element to 0.0,
+                                     //   running on the constructing thread (master).
+                                     //   This IS the first touch — every page now
+                                     //   sits on the master's NUMA node.
+
+#pragma omp parallel for             // "Parallel-init" — pages already placed.
+for (size_t i = 0; i < u.size(); ++i)
+    u[i] = 0.0;                      // No-op for first-touch.
+
+#pragma omp parallel for             // Computation — 7/8 of accesses cross the
+for (size_t i = 0; i < u.size(); ++i) //  NUMA fabric on Rome at 128T.
+    u[i] = stencil(u, i);
+```
+
+- **The bug**: `std::vector<T>(n)` is a constructor call. For built-in `T`, it value-initialises every element. That loop runs on the master thread.
+- Plain `new[]` / `malloc` / `posix_memalign` are different: they return *uninitialised* memory; the first WRITE is the first touch — you control when and where.
+- **The fix** (next slide): allocate with `posix_memalign`, then schedule the first-touch in parallel.
+
+## First-touch — `posix_memalign` + parallel init
+
+{{< include _partials/day4/numa_first_touch__allocate.qmd >}}
 
 {{< include _partials/day4/numa_first_touch__parallel_init.qmd >}}
 
-- The parallel-for traversal means each thread *first-touches* the slice of `v` it will later read/write — pages distribute across all 8 NUMA domains automatically, no `numactl` needed.
-- The kernel writes to memory it just touched; the OS pins each page to that thread's NUMA node.
+- `posix_memalign(p, 64, n*sizeof(double))` returns *uninitialised* memory — no pages mapped to any NUMA node yet.
+- The parallel-for is the **first write** — each thread touches the slice it will later read/write, so pages distribute across the team's NUMA domains.
+- 64-byte alignment is the cache-line size on Rome and covers AVX2's 32-byte vector loads — same number we'll reuse for SIMD (later slide).
+- Pair with `std::free(u)` on teardown.
 
 ## First-touch — the matching compute kernel
 
 {{< include _partials/day4/numa_first_touch__consumer.qmd >}}
 
 - The consumer must use the **same** parallel traversal pattern as the init for first-touch to pay off — each thread reads the slice it earlier first-touched, all accesses local.
-- On Rome with 8 NUMA domains, the parallel-init / parallel-compute pair runs typically **3–5× faster at 128 threads** than the naive serial-init / parallel-compute pair on the previous slide.
+- On Rome with 8 NUMA domains, the `posix_memalign` + parallel-init / parallel-compute pair runs typically **3–5× faster at 128 threads** than the `std::vector` trap two slides back.
 - A `schedule(dynamic)` consumer with chunks bigger or smaller than the init's chunks defeats this — threads end up reading pages they didn't touch. Match the schedules.
 
 ## Cross-socket cost in numbers
@@ -457,6 +470,23 @@ for (int i = 0; i < N; ++i) {
 - A 256-bit register holds **4 double-precision** values (or 8 single-precision).
 - One SIMD instruction (`vaddpd`) does 4 adds in parallel.
 - Per-core peak: 2.25 GHz × 16 FLOPs/cycle (one fused multiply-add — FMA — per lane × 2 ops) = 36 GFLOPs.
+
+## Aligned allocation for SIMD
+
+```cpp
+void* raw = nullptr;
+posix_memalign(&raw, 64, n * sizeof(double));
+double* x = static_cast<double*>(raw);
+// ... use x in #pragma omp simd loops ...
+std::free(x);
+```
+
+- **What alignment to ask for?** `64` bytes is the universal answer:
+  - AVX2 vector width is 32 bytes; aligning to 32 covers AVX/AVX2.
+  - Cache line is 64 bytes; aligning to 64 covers all SIMD widths up to AVX-512 *and* aligns to cache-line boundaries — which doubles as the false-sharing-prevention size (one number to remember).
+- **Why not `std::vector<double>(n)`?** Same trap as the first-touch cluster: the constructor value-initialises on the master, *and* gives no alignment guarantee beyond `alignof(double) = 8`. So it's wrong for both reasons.
+- **Why not the `aligned(p : 64)` clause on `#pragma omp simd`?** On Zen 2 unaligned vector loads cost ~the same as aligned, so the compiler-side win is ~0 % here. Save it for ARM / older Intel where it pays off.
+- The same `posix_memalign` you use for first-touch is the right tool for SIMD-friendly memory.
 
 ## `omp simd` — vectorise within a thread
 
