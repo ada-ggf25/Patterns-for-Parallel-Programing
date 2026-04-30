@@ -1,6 +1,6 @@
 # A2 Benchmark Results — CX3 Rome
 
-> **Phase 3.5 sweep complete.** Phase 4 formal benchmark (`evaluate.pbs`) still pending.  
+> **Complete — Phase 3.5 sweep + Phase 4 formal benchmark both done.**  
 > Platform: CX3 Rome (AMD EPYC 7742, 128 cores, 2 sockets, SMT off).  
 > Build: GCC 13.3.0, `-O3 -march=znver2 -mavx2 -fopenmp`. Harness: `hyperfine --warmup 1 --min-runs 3`.  
 > All times are the `min` value from hyperfine JSON (most stable run). Grid: 5000 × 2500 (upper half, ×2).

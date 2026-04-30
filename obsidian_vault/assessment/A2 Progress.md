@@ -1,6 +1,6 @@
 # A2 Progress — Mandelbrot Two-Variant
 
-**Overall status:** `IN PROGRESS — Phases 1, 2, 3, 3.5, 4, 5, 6, 7 & 8 complete; awaiting final instructor marking`
+**Overall status:** `COMPLETE — all 8 phases done, all 5 CI jobs green, submitted for instructor marking`
 **Branch:** `ggf25`
 **Graded snapshot:** end of day 5 (instructor re-runs on CX3 Rome)
 **Points available:** 30 / 100
@@ -20,7 +20,7 @@
 | MCQ (15 questions) | 2 | ✅ All 15 answered in `answers.csv` |
 | REFLECTION format + completion | 1 | ✅ CI `REFLECTION.md format` green — all sections committed and pushed |
 | Reasoning question (instructor-marked) | 2 | ⬜ |
-| **Total** | **30** | **In progress** |
+| **Total** | **30** | **✅ Complete** |
 
 ---
 

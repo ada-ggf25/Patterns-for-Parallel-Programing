@@ -11,10 +11,14 @@
             "id": "01ffc1dd031a09c7",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "assessment/A2 Progress.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "A2 Progress"
             }
           }
         ]
@@ -90,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "pbs/Job States.md",
+                "file": "assessment/A2 Progress.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -100,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Job States"
+              "title": "Backlinks for A2 Progress"
             }
           },
           {
@@ -174,32 +178,32 @@
       "bases:Create new base": false
     }
   },
-  "active": "01ffc1dd031a09c7",
+  "active": "file-explorer",
   "lastOpenFiles": [
+    "Index.md.tmp.12240.1777539272714",
+    "assessment/A3 Jacobi.md",
+    "Index.md.tmp.12240.1777539268905",
+    "assessment/Assessment Overview.md",
+    "assessment/A2 Progress.md",
+    "assessment/A2 Benchmark Results.md",
+    "Index.md",
+    "CLAUDE.md",
+    "CLAUDE.md.tmp.12240.1777539123003",
+    "CLAUDE.md.tmp.12240.1777539118224",
+    "assessment/A2 Benchmark Results.md.tmp.12240.1777539110132",
+    "assessment/A2 Progress.md.tmp.12240.1777539106708",
+    "assessment/A2 Progress.md.tmp.12240.1777539105717",
     "Index.md.tmp.12240.1777538757683",
     "performance/Roofline Model.md.tmp.12240.1777538561754",
     "assessment/A3 Jacobi.md.tmp.12240.1777538552565",
     "performance/SIMD.md.tmp.12240.1777538545986",
-    "performance/SIMD.md.tmp.12240.1777538538751",
-    "performance/SIMD.md.tmp.12240.1777538534668",
-    "performance/Timing omp_get_wtime.md.tmp.12240.1777538524120",
-    "assessment/A2 Benchmark Results.md",
-    "assessment/A2 Progress.md",
-    "CLAUDE.md.tmp.175014.1777496051056",
-    "assessment/A2 Progress.md.tmp.175014.1777493037878",
-    "assessment/A2 Progress.md.tmp.175014.1777493032490",
-    "assessment/A2 Progress.md.tmp.175014.1777492121099",
-    "Index.md",
     "openmp/Memory Model.md",
     "assessment/A1 Benchmark Results.md",
     "assessment/A1 Progress.md",
     "assessment/A1 Integration.md",
-    "assessment/A3 Jacobi.md",
     "examples/pi_openmp.md",
     "assessment/A2 Mandelbrot.md",
-    "CLAUDE.md",
     "openmp/_OPENMP Macro.md",
-    "assessment/Assessment Overview.md",
     "cluster/Login and Authentication.md",
     "parallel for directive.md",
     "performance/STREAM and HPL.md",
