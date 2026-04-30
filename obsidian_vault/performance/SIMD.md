@@ -29,7 +29,7 @@ for (size_t i = 0; i < n; ++i)
 
 Two levels of parallelism: threads distribute iterations, then each thread vectorises its chunk. Compose both for free when the loop is amenable.
 
-## `aligned` and `safelen`
+## `aligned` and `safelen` (advanced, optional)
 
 ```cpp
 #pragma omp simd aligned(x, y, r : 64) safelen(8)
@@ -37,10 +37,12 @@ for (size_t i = 0; i < n; ++i)
     r[i] = a * x[i] + y[i];
 ```
 
-- `aligned(x, y, r : 64)` — promise that pointers are 64-byte aligned; compiler emits aligned load/store instructions (faster). **Misaligning at runtime → segfault.**
-- `safelen(8)` — assert at least 8 consecutive iterations are dependence-free. Enables wider unrolling + vectorisation.
+- `aligned(x, y, r : 64)` — promise that pointers are 64-byte aligned; compiler emits aligned load/store instructions. **Misaligning at runtime → segfault.**
+- `safelen(8)` — assert at least 8 consecutive iterations are dependence-free.
 
-To allocate aligned memory: `std::vector` aligned on 64 bytes using `std::aligned_alloc` or `posix_memalign`, or use `alignas(64)` for stack arrays.
+**Current guidance**: on Zen 2 (Rome) and any post-Haswell Intel, unaligned vector loads/stores cost essentially the same as aligned ones. Alignment tweaks are therefore out of scope for A3. Plain `#pragma omp simd` is sufficient and correct.
+
+To allocate aligned memory if needed: `alignas(64)` for stack arrays, or `std::aligned_alloc` / `posix_memalign` for heap.
 
 ## `declare simd` — vectorised function variant
 
@@ -74,18 +76,18 @@ source.cpp:38:5: remark: loop not vectorized: cannot identify array bounds
                  [-Rpass-missed=loop-vectorize]
 ```
 
-`-Rpass-missed` is the actionable one: fix the array-bounds aliasing, add `safelen`, or add `restrict` to eliminate alias analysis failure.
+`-Rpass-missed` is the actionable one: add `#pragma omp simd`, fix array-bounds aliasing, change pointer types, or add `restrict` to eliminate alias analysis failure.
 
 ## A3 extension: SIMD
 
-A3's SIMD extension: annotate the Jacobi inner loop with `simd` + `aligned` + `safelen`; measure the speedup ratio. Soft threshold: `ratio ≥ 1.2×` → full marks; `≥ 1.05×` → half marks.
+A3's SIMD extension: annotate the Jacobi innermost loop with `#pragma omp simd`; measure the speedup ratio. Soft threshold: `ratio ≥ 1.2×` → full marks; `≥ 1.05×` → half marks.
 
 ```cpp
 // before — relies on auto-vectorisation
 for (size_t i = ...) r[i] = stencil(u, i);
 
 // after
-#pragma omp simd aligned(u, r : 64) safelen(8)
+#pragma omp simd
 for (size_t i = ...) r[i] = stencil(u, i);
 ```
 

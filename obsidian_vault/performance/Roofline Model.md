@@ -82,6 +82,16 @@ Example: A1 achieves ~16 GFLOPs at 128T.
 
 Both fractions should be reported in REFLECTION Section 3. The HPL fraction is the "honest" one.
 
+## Top500 context
+
+The [Top500](https://top500.org/) list ranks the world's largest supercomputers biannually (ISC in June, SC in November) since 1993 — all ranked by **Rmax** (HPL achieved throughput):
+
+- Efficiency `Rmax / Rpeak` typically **65–85 %** across the list — the same ratio as our 63 % on Rome with OpenBLAS.
+- Exascale era: leaders (Frontier, Aurora, El Capitan) at ≥ 1 EFLOPs ≈ 10⁶ × one Rome node.
+- Sister lists: **HPCG** (memory-bound sparse benchmark; reorders the ranking vs HPL) and **Green500** (FLOPs/W).
+
+HPL is deliberately used for Top500 because it represents the best-case sustained throughput achievable by vendor-tuned code; real workloads sit much lower.
+
 ## Limitations of the model
 
 The roofline assumes a flat, average byte cost per kernel. It does not model:

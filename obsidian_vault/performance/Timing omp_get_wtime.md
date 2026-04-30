@@ -20,11 +20,12 @@ const double duration_s = t1 - t0;
 
 ## The warm-up trick
 
-The first parallel region pays a one-time team-creation cost (~µs). Without warm-up, the first measurement can be 5–10× slower than steady state:
+The first measurement of any kernel pays a stack of one-time costs the second one doesn't. Wrap the timed region with a warm-up that mirrors the real access pattern, then throw away its wall-clock:
 
 ```cpp
-// Warm-up — pays startup cost once, result discarded
-#pragma omp parallel { /* trivial work */ }
+// Warm-up — mirrors the real access pattern; result discarded
+#pragma omp parallel for ...
+for (...) { /* same memory as timed loop */ }
 
 // Now measure steady state
 const double t0 = omp_get_wtime();
@@ -33,7 +34,13 @@ for (...) { ... }
 const double t1 = omp_get_wtime();
 ```
 
-The warm-up loop should also touch the same memory as the timed loop to prime NUMA placement and caches.
+Why the warm-up matters — five distinct costs:
+
+- **NUMA first-touch placement**: physical pages are allocated on the NUMA node of whichever thread first writes to them. Without a parallel warm-up, pages may sit on the main thread's node — remote-node access is 1.5–3× slower on Rome.
+- **Page faults**: ~10 µs per 4 KB page; a 100 MB array costs ~0.5 s in fault overhead on the cold run.
+- **CPU frequency / Turbo settling**: cores ramp clock from idle. Short kernels measured cold land below steady-state clock.
+- **TLB / cache warming**: marginal for streaming kernels (each iteration evicts the last), but can matter for smaller working sets.
+- **OpenMP team creation**: tens of µs to spin up the worker threads on the first region.
 
 ## Min-of-k for noisy hardware
 

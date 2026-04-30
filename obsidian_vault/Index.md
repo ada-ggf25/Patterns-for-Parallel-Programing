@@ -86,7 +86,7 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 27. [[performance/False Sharing]] — MESI, cache-line padding, `alignas(64)`.
 28. [[performance/NUMA First Touch]] — first-touch policy, parallel init, cross-socket cost.
 29. [[performance/Loop Transformations]] — `collapse(N)`, tiling preview.
-30. [[performance/SIMD]] — `omp simd`, `parallel for simd`, `aligned`, `safelen`, `declare simd`.
+30. [[performance/SIMD]] — `omp simd`, `parallel for simd`, `declare simd`; `aligned`/`safelen` optional on Zen 2.
 31. [[performance/STREAM and HPL]] — bandwidth and compute ceiling benchmarks.
 
 **Assessments:**

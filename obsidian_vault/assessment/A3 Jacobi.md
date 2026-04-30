@@ -88,14 +88,16 @@ Threshold: `delta_percent ≥ 15` → full; `≥ 5` → half.
 
 ### Option C: `simd`
 
-Annotate the innermost stencil loop with `simd` + `aligned` + `safelen`.
+Annotate the innermost stencil loop with `#pragma omp simd`.
 
 ```cpp
 // after
-#pragma omp simd aligned(u, u_next : 64) safelen(8)
+#pragma omp simd
 for (size_t k = 1; k < NZ-1; ++k)
     u_next[idx(i,j,k)] = stencil(u, i, j, k);
 ```
+
+Plain `#pragma omp simd` is sufficient — on Zen 2 (Rome) unaligned vector loads cost the same as aligned, so `aligned` and `safelen` are not required.
 
 Threshold: `ratio ≥ 1.2×` → full; `≥ 1.05×` → half.
 
