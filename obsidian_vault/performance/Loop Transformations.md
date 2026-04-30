@@ -44,17 +44,17 @@ for (int i = 0; i < N; ++i) {
 
 ## `collapse(3)` for A3 Jacobi
 
-The 3D Jacobi stencil has three nested loops. With `collapse(3)` all NX × NY × NZ iterations are distributed:
+The 3D Jacobi stencil has three nested loops. With `collapse(3)` all (NX-2)×(NY-2)×(NZ-2) interior iterations are distributed (≈ 133 M for 512³):
 
 ```cpp
-#pragma omp parallel for collapse(3) default(none) shared(u, u_next, NX, NY, NZ)
+#pragma omp parallel for collapse(3) default(none) shared(u, u_next)
 for (size_t i = 1; i < NX-1; ++i)
     for (size_t j = 1; j < NY-1; ++j)
         for (size_t k = 1; k < NZ-1; ++k)
             u_next[idx(i,j,k)] = stencil(u, i, j, k);
 ```
 
-This gives all 128 threads enough work even when one dimension is small.
+`NX`, `NY`, `NZ` are `constexpr` constants — they are not runtime variables and do **not** need to appear in `shared` or `firstprivate`. This gives all 128 threads enough work even when one dimension is small.
 
 ## Tiling (preview — A3 advanced)
 

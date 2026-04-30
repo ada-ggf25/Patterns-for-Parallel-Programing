@@ -37,7 +37,7 @@ for (size_t i = 1; i < NX-1; ++i)
 **Critical for A3-core performance:** initialise `u` in the same parallel-for pattern you'll use for computation:
 
 ```cpp
-// BAD — all pages on master's NUMA node → 7/8 cross-socket at 128 threads
+// BAD — all pages on master's NUMA node → 7/8 on remote NUMA domains at 128 threads
 for (size_t i = 0; i < NX*NY*NZ; ++i) u[i] = 0.0;
 
 // GOOD — each thread first-touches its own pages
@@ -174,17 +174,17 @@ Columns: `thread_count, stage, measured_time_s, measured_speedup, measured_effic
 ```
 bandwidth_GBs = bytes_moved / time_s / 1e9
              = (NX-2) × (NY-2) × (NZ-2) × NSTEPS × 56 / time_s / 1e9
-             = 508³ × 100 × 56 / time_s / 1e9
-             ≈ 734 / time_s   [GB/s]
+             = 510³ × 100 × 56 / time_s / 1e9
+             ≈ 743 / time_s   [GB/s]
 
 roofline_fraction = bandwidth_GBs / STREAM_GBs
 ```
 
 56 B/update = 6 reads × 8 B + 1 write × 8 B (6 face neighbours, no centre).
 
-At perfect roofline (128T, STREAM = 231.5 GB/s): time ≈ 734 / 231.5 ≈ **3.17 s** for 100 steps.
+At perfect roofline (128T, STREAM = 231.5 GB/s): time ≈ 743 / 231.5 ≈ **3.21 s** for 100 steps.
 
-STREAM values: 231.5 GB/s at 128T (graded), 116.0 GB/s at 64T, 246.2 GB/s at 32T (one-per-CCX).
+STREAM values: 231.5 GB/s at 128T (graded), 116.0 GB/s at 64T close-binding (one socket), 246.2 GB/s at 32T (one-per-CCX, spread).
 
 `speedup = T(1,core) / T(P)` — use T(1,core) as reference for all rows including the extension row.
 

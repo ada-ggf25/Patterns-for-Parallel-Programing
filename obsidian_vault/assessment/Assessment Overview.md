@@ -87,8 +87,8 @@ Green CI is a necessary but not sufficient condition for full marks. Final perfo
 
 - Dual-socket EPYC 7742 = 128 physical cores, 8 NUMA domains, SMT off.
 - Peak DP: 4608 GFLOPs (theoretical). HPL achieved: 2896 GFLOPs ≈ 63 %.
-- STREAM Triad: 246.2 GB/s (32T, 1 per CCX); 231.5 GB/s (128T full node).
-- Ridge OI: 4608 / 246 ≈ 18.7 FLOPs/byte.
+- STREAM Triad: 246.2 GB/s (32T spread, 1/CCX); 237 GB/s (64T spread); 231.5 GB/s (128T full node); 116.0 GB/s (32T close, 1 socket).
+- Ridge OI: 4608 / 246.2 ≈ 18.7 FLOPs/byte.
 
 ## Related
 

@@ -30,7 +30,7 @@ All 15 questions from `questions.md` with correct answers and brief reasoning. F
 
 **Answer: C — 0.14 (strongly memory-bound)**
 
-A 7-point stencil reads 6 (or 7 including center) doubles and writes 1 per grid point: ~64 bytes per point for ~7 FLOPs → OI ≈ 0.11–0.14 FLOPs/byte. Rome's ridge point is ~18.7 FLOPs/byte, so this kernel is ~130× below the ridge — firmly in the bandwidth-bound region. The working set (2.1 GB) exceeds Rome's L3 (256 MB), so data comes from DRAM.
+The **actual A3 kernel** reads 6 face-neighbour doubles and writes 1 per grid point: **56 bytes** (6×8 + 1×8) for **6 FLOPs** (5 adds + 1 divide) → naive OI = 6/56 ≈ **0.11 FLOPs/byte**; with cache-line reuse factored in ≈ **0.14 FLOPs/byte**. The **pedagogical slide model** uses 7 reads including the centre (64 bytes, 7 FLOPs → 7/64 ≈ 0.11); both give the same OI range, but the A3 code excludes the centre. Rome's ridge point is ~18.7 FLOPs/byte, so this kernel is ~130× below the ridge — firmly in the bandwidth-bound region. The working set (2.1 GB) exceeds Rome's L3 (256 MB per socket), so data comes from DRAM.
 
 ### q02 — What "first-touch" means on a NUMA system
 
@@ -42,7 +42,7 @@ The OS allocates a virtual page only when a thread first accesses it. "First tou
 
 **Answer: B — `#pragma omp parallel for` loop using the same traversal order as the compute step**
 
-With serial init (A), all pages land on the master thread's NUMA node — 7/8 threads access cross-socket memory at 128T (3× penalty). `calloc` (C) is also single-threaded from the allocator's NUMA perspective. `mmap` (D) likewise allocates pages lazily but doesn't distribute them. Only a parallel init with matching traversal order (B) places each page near the thread that will compute it.
+With serial init (A), all pages land on the master thread's NUMA node — 7/8 threads are on remote NUMA domains at 128T; of those, 4/8 cross the socket boundary via xGMI (~3× penalty). `calloc` (C) is also single-threaded from the allocator's NUMA perspective. `mmap` (D) likewise allocates pages lazily but doesn't distribute them. Only a parallel init with matching traversal order (B) places each page near the thread that will compute it.
 
 ### q04 — Definition of false sharing
 

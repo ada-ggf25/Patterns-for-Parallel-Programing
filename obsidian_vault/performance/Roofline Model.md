@@ -112,15 +112,15 @@ Two kernels with the same source-level OI can land at very different points once
 ```
 achieved_GBs   = bytes_moved / time_s / 1e9
                = (NX-2) × (NY-2) × (NZ-2) × NSTEPS × 56 / time_s / 1e9
-               = 508³ × 100 × 56 / time_s / 1e9
-               ≈ 734 / time_s   [GB/s for the standard A3 problem at NSTEPS=100]
+               = 510³ × 100 × 56 / time_s / 1e9
+               ≈ 743 / time_s   [GB/s for the standard A3 problem at NSTEPS=100]
 ceiling_GBs    = STREAM_at_P_threads
 fraction       = achieved_GBs / ceiling_GBs
 ```
 
 56 B per update = **6 reads × 8 B + 1 write × 8 B** (actual stencil: 6 face neighbours, no centre).
 
-> **Do not use the FLOPs/OI path here.** `FLOPs_total / OI / time_s / 1e9` with OI = 0.14 and 7 FLOPs/update gives ≈ 663/time_s — about 10 % below the correct 734/time_s. The discrepancy comes from mixing the 7-read pedagogical model in the slides (7 FLOPs / 50 effective bytes = 0.14) with the actual 6-read stencil (56 bytes/update). Use direct byte counting. See [[../assessment/A3 Jacobi]] for the explicit formula.
+> **Do not use the FLOPs/OI path here.** `FLOPs_total / OI / time_s / 1e9` with OI = 0.14 and 7 FLOPs/update gives ≈ 663/time_s — about 11 % below the correct 743/time_s. The discrepancy comes from mixing the 7-read pedagogical model in the slides (7 FLOPs / 50 effective bytes = 0.14) with the actual 6-read stencil (56 bytes/update). Use direct byte counting. See [[../assessment/A3 Jacobi]] for the explicit formula.
 
 Graduated A3 thresholds: ≥ 0.70 → full marks; ≥ 0.50 → 70%; ≥ 0.30 → 40%; ≥ 0.15 → 15%; else 0.
 

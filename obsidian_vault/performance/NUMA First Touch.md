@@ -26,8 +26,8 @@ std::vector<double> u(n);            // ← value-initialises every element to 0
 for (size_t i = 0; i < u.size(); ++i)
     u[i] = 0.0;                      // No-op for first-touch.
 
-#pragma omp parallel for             // Computation — 7/8 of accesses cross the
-for (size_t i = 0; i < u.size(); ++i) //  NUMA fabric on Rome at 128T.
+#pragma omp parallel for             // Computation — 7/8 of accesses go to remote
+for (size_t i = 0; i < u.size(); ++i) //  NUMA domains (4/8 cross-socket) on Rome at 128T.
     u[i] = stencil(u, i);
 ```
 
@@ -84,9 +84,9 @@ Counter-intuitive measurement from CX3:
 
 | Threads | STREAM Triad GB/s |
 |---|---:|
-| 32 (spread, 1 per CCX) | **246** |
+| 32 (spread, 1 per CCX) | **246.2** |
 | 64 (spread) | 237 |
-| 128 (full node) | 231 |
+| 128 (full node) | 231.5 |
 | 32 (close, 1 socket) | 116 |
 
 32 threads beat 128 by ~6 %. DRAM bandwidth is fixed; it's saturated by ~1 thread per CCX. Adding more threads causes L3 contention with no extra bandwidth to win.
