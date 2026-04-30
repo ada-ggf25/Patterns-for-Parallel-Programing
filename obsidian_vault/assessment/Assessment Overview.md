@@ -54,6 +54,10 @@ The grader checks these arithmetic identities within 2 %. This is an internal-co
 
 The grader snapshots the **`ggf25`** branch at the end of day 5. This is the student-specific branch created by GitHub Classroom. Pushing to `main` does not get graded.
 
+## Syncing template fixes
+
+If the instructors push a fix to the canonical template after you've accepted, pull it with `git checkout template/main -- <file>`, not `git rebase template/main`. GitHub Classroom repos share no git history with the template, so rebase produces conflicts on every changed file. See [[Pulling Template Updates]] for the full procedure.
+
 ## Commit history (academic integrity, 0 pts)
 
 Commit history is reviewed for academic integrity — no marks deducted automatically, but flagged histories get a closer human look. The grader checks:

@@ -1,6 +1,6 @@
 # NUMA First Touch
 
-Linux places a memory page on the NUMA node of the thread that **first writes** to it, not the thread that calls `malloc`/`new`/`std::vector::resize`. This is the **first-touch policy**.
+Linux places a memory page on the NUMA node of the thread that **first writes** to it, not the thread that calls `malloc`/`new`/`posix_memalign`. This is the **first-touch policy**.
 
 ## Why it matters on Rome
 
@@ -14,47 +14,60 @@ Rome has 8 NUMA domains (4 per socket). Cross-socket memory access costs ~250 ns
 | Local DRAM | ~80 ns |
 | Cross-socket DRAM | ~250 ns |
 
-## The naive mistake: single-threaded init
+## The `std::vector` trap
 
 ```cpp
-std::vector<double> u(NX * NY * NZ);
+std::vector<double> u(n);            // ← value-initialises every element to 0.0.
+                                     //   The constructor runs on the master thread.
+                                     //   This IS the first touch — every page now
+                                     //   sits on the master's NUMA node.
 
-// BUG: master thread first-touches ALL pages → all on socket 0
+#pragma omp parallel for             // "Parallel init" — pages already placed.
 for (size_t i = 0; i < u.size(); ++i)
-    u[i] = 0.0;
+    u[i] = 0.0;                      // No-op for first-touch.
 
-// 128 threads read from u — 7/8 of accesses cross the NUMA fabric
-#pragma omp parallel for
-for (size_t i = 0; i < u.size(); ++i)
+#pragma omp parallel for             // Computation — 7/8 of accesses cross the
+for (size_t i = 0; i < u.size(); ++i) //  NUMA fabric on Rome at 128T.
     u[i] = stencil(u, i);
 ```
 
-All pages land on socket 0 (master's NUMA domain). 7/8 of thread accesses are cross-socket.
+- **The bug**: `std::vector<T>(n)` is a constructor call. For built-in `T`, it value-initialises every element — that loop runs on the master thread.
+- `plain new[]` / `malloc` / `posix_memalign` are different: they return *uninitialised* memory; the first WRITE is the first touch — you control when and where.
 
-## The fix: parallel first-touch init
+## The fix: `posix_memalign` + parallel init
 
 ```cpp
-std::vector<double> u(NX * NY * NZ);
+// posix_memalign returns *uninitialised* memory — no pages touched yet.
+void* raw = nullptr;
+posix_memalign(&raw, 64, n * sizeof(double));
+double* u = static_cast<double*>(raw);
 
-// Each thread first-touches its slice → pages distribute across 8 domains
-#pragma omp parallel for default(none) shared(u)
-for (size_t i = 0; i < u.size(); ++i)
-    u[i] = static_cast<double>(i);
+// The first write happens here, in parallel — pages distribute across
+// the team's NUMA domains.
+#pragma omp parallel for default(none) shared(u, n)
+for (size_t i = 0; i < n; ++i)
+    u[i] = 0.0;
+
+// ... use u ...
+std::free(u);
 ```
 
-The parallel-for traversal means each thread writes the slice it will later read — pages are pinned to each thread's NUMA node automatically.
+- `posix_memalign(p, 64, n*sizeof(double))` returns *uninitialised* memory — no pages mapped to any NUMA node yet.
+- The parallel-for is the **first write** — each thread touches the slice it will later read/write, so pages distribute across the team's NUMA domains.
+- 64-byte alignment = cache-line size on Rome. This covers AVX2's 32-byte vector width and is also the false-sharing prevention boundary — one number to remember across NUMA, SIMD, and false-sharing contexts.
+- Pair with `std::free(u)` on teardown.
 
 ## The matching compute kernel
 
 The consumer must use the **same traversal pattern** as the init:
 
 ```cpp
-double sum_parallel(const std::vector<double>& v)
+double sum_parallel(const double* u, std::size_t n)
 {
     double s = 0.0;
-#pragma omp parallel for default(none) shared(v) reduction(+:s)
-    for (std::size_t i = 0; i < v.size(); ++i)
-        s += v[i];   // each thread reads the pages it initialised
+#pragma omp parallel for default(none) shared(u, n) reduction(+ : s)
+    for (std::size_t i = 0; i < n; ++i)
+        s += u[i];   // each thread reads the pages it initialised
     return s;
 }
 ```

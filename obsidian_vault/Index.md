@@ -40,6 +40,32 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 
 ---
 
+## Assessment 3 — IN PROGRESS 🔄
+
+**Status: IN PROGRESS** | Branch: `ggf25` | 40 pts (25 core + 15 extension)
+
+→ [[assessment/A3 Progress]] — phase-by-phase implementation guide and scoring tracker **(start here)**
+→ [[assessment/A3 Jacobi]] — full technical reference (kernel, extensions, roofline, deliverables format)
+→ [[assessment/A3 MCQ]] — all 15 MCQ questions with correct answers and rationale
+→ [[assessment/A3 Benchmark Results]] — CX3 Rome measured times (fill after Phase 4)
+
+**Phase overview:**
+
+| Phase | Task | Status |
+|---|---|---|
+| 1 | Parallelise `jacobi_step()` in `core/stencil.cpp` with `collapse(3)` | ⬜ |
+| 2 | Pick ONE extension; implement before + after variants in `extension/<branch>/` | ⬜ |
+| 3 | TSan check locally + push for CI | ⬜ |
+| 4 | CX3 benchmark (`qsub evaluate.pbs`) + fill `tables.csv` + `perf-results-a3.json` | ⬜ |
+| 5 | Answer 15 MCQs in `answers.csv` | ⬜ |
+| 6 | Fill `EXTENSION.md` header with measured before/after/delta | ⬜ |
+| 7 | Write all 5 sections of `REFLECTION.md` | ⬜ |
+| 8 | Lint clean + all CI jobs green | ⬜ |
+
+**Kernel:** 7-point 3D Jacobi stencil, OI ≈ 0.14 FLOPs/byte, DRAM-bandwidth-bound. Roofline target: ≥ 0.50 of 231.5 GB/s STREAM at 128T on Rome.
+
+---
+
 ## Introduction — Suggested reading order
 
 1. [[cluster/CX3 Overview]] — what the cluster is.
@@ -88,11 +114,15 @@ This vault covers the full **Patterns for Parallel Programming** module at Imper
 **Assessments:**
 
 32. [[assessment/Assessment Overview]] — 100-pt rubric, thread ladder, grading formulas.
-33. [[assessment/A1 Progress]] — ✅ A1 complete.
-34. [[assessment/A1 Integration]] — 20 pts, full technical reference for schedule sweep.
-35. [[assessment/A2 Progress]] — ✅ A2 complete.
-36. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs tasks, CHOICE.md format, implementation patterns.
-37. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
+33. [[assessment/Pulling Template Updates]] — how to sync template fixes into your fork (file-checkout, not rebase).
+34. [[assessment/A1 Progress]] — ✅ A1 complete.
+35. [[assessment/A1 Integration]] — 20 pts, full technical reference for schedule sweep.
+36. [[assessment/A2 Progress]] — ✅ A2 complete.
+37. [[assessment/A2 Mandelbrot]] — 30 pts, parallel-for vs tasks, CHOICE.md format, implementation patterns.
+38. [[assessment/A3 Jacobi]] — 40 pts, bandwidth-bound stencil + extension.
+39. [[assessment/A3 Progress]] — ⬜ A3 in progress (start here for implementation).
+40. [[assessment/A3 MCQ]] — MCQ answers and rationale.
+41. [[assessment/A3 Benchmark Results]] — CX3 Rome times (fill after Phase 4).
 
 ## Map by topic
 

@@ -27,16 +27,22 @@ The **ridge point** separates the two regimes: `ridge_OI = peak_GFLOPs / STREAM_
 
 ## OI for the Jacobi stencil (A3)
 
+The actual A3 kernel reads only the 6 face neighbours — the centre point is excluded:
+
 ```cpp
-u_next[i,j,k] = (u[i,j,k] + u[i±1,j,k] + u[i,j±1,k] + u[i,j,k±1]) * (1/7);
+u_next[i,j,k] = (u[i-1,j,k] + u[i+1,j,k]
+               + u[i,j-1,k] + u[i,j+1,k]
+               + u[i,j,k-1] + u[i,j,k+1]) / 6.0;
 ```
 
-- Reads: 7 doubles × 8 B = 56 B
+- Reads: 6 doubles × 8 B = 48 B
 - Writes: 1 double × 8 B = 8 B
-- FLOPs: 6 adds + 1 multiply = 7
+- FLOPs: 5 adds + 1 divide = 6
 
-Naive OI = 7 / 64 ≈ **0.11 FLOPs/byte** → bandwidth-bound, well below ridge at 18.7.
+Naive OI = 6 / 56 ≈ **0.11 FLOPs/byte** → bandwidth-bound, well below ridge at 18.7.
 With cache reuse factored in: ~0.14 FLOPs/byte (still firmly bandwidth-bound).
+
+> **Note:** Day 4 slides show the stencil as `(u[i,j,k] + 6 neighbours) / 7` (7 reads, 7 FLOPs, 64 B) for a pedagogical illustration. The actual A3 code omits the centre — do not include `u[i,j,k]` and do not divide by 7. Either model gives naive OI ≈ 0.11, so the conclusion is identical.
 
 ## Assessment kernels
 
@@ -104,10 +110,17 @@ Two kernels with the same source-level OI can land at very different points once
 ## A3 roofline fraction
 
 ```
-achieved_GBs   = (bytes_moved_per_problem) / time_s / 1e9
+achieved_GBs   = bytes_moved / time_s / 1e9
+               = (NX-2) × (NY-2) × (NZ-2) × NSTEPS × 56 / time_s / 1e9
+               = 508³ × 100 × 56 / time_s / 1e9
+               ≈ 734 / time_s   [GB/s for the standard A3 problem at NSTEPS=100]
 ceiling_GBs    = STREAM_at_P_threads
 fraction       = achieved_GBs / ceiling_GBs
 ```
+
+56 B per update = **6 reads × 8 B + 1 write × 8 B** (actual stencil: 6 face neighbours, no centre).
+
+> **Do not use the FLOPs/OI path here.** `FLOPs_total / OI / time_s / 1e9` with OI = 0.14 and 7 FLOPs/update gives ≈ 663/time_s — about 10 % below the correct 734/time_s. The discrepancy comes from mixing the 7-read pedagogical model in the slides (7 FLOPs / 50 effective bytes = 0.14) with the actual 6-read stencil (56 bytes/update). Use direct byte counting. See [[../assessment/A3 Jacobi]] for the explicit formula.
 
 Graduated A3 thresholds: ≥ 0.70 → full marks; ≥ 0.50 → 70%; ≥ 0.30 → 40%; ≥ 0.15 → 15%; else 0.
 

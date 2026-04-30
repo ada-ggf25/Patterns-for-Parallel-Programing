@@ -29,6 +29,23 @@ for (size_t i = 0; i < n; ++i)
 
 Two levels of parallelism: threads distribute iterations, then each thread vectorises its chunk. Compose both for free when the loop is amenable.
 
+## Aligned allocation for SIMD
+
+```cpp
+void* raw = nullptr;
+posix_memalign(&raw, 64, n * sizeof(double));
+double* x = static_cast<double*>(raw);
+// ... use x in #pragma omp simd loops ...
+std::free(x);
+```
+
+- **What alignment to ask for?** `64` bytes is the universal answer:
+  - AVX2 vector width is 32 bytes; aligning to 32 covers AVX/AVX2.
+  - Cache line is 64 bytes; aligning to 64 covers all SIMD widths up to AVX-512 *and* aligns to cache-line boundaries — which doubles as the false-sharing-prevention size. One number to remember.
+- **Why not `std::vector<double>(n)`?** Two problems: the constructor value-initialises on the master (defeating NUMA first-touch), *and* gives no alignment guarantee beyond `alignof(double) = 8`. Wrong for both reasons.
+- **Why not the `aligned(p : 64)` clause on `#pragma omp simd`?** On Zen 2 unaligned vector loads cost ~the same as aligned, so the compiler-side win is ~0 % here. Save it for ARM / older Intel where it pays off.
+- The same `posix_memalign` you use for first-touch is the right tool for SIMD-friendly memory — same alignment constant, same function.
+
 ## `aligned` and `safelen` (advanced, optional)
 
 ```cpp
@@ -41,8 +58,6 @@ for (size_t i = 0; i < n; ++i)
 - `safelen(8)` — assert at least 8 consecutive iterations are dependence-free.
 
 **Current guidance**: on Zen 2 (Rome) and any post-Haswell Intel, unaligned vector loads/stores cost essentially the same as aligned ones. Alignment tweaks are therefore out of scope for A3. Plain `#pragma omp simd` is sufficient and correct.
-
-To allocate aligned memory if needed: `alignas(64)` for stack arrays, or `std::aligned_alloc` / `posix_memalign` for heap.
 
 ## `declare simd` — vectorised function variant
 

@@ -40,14 +40,17 @@ assessment/      A1 / A2 / A3 deliverables and scoring notes
   A2 Progress          ← COMPLETE
   A2 Mandelbrot        ← full technical reference for A2
   A2 Benchmark Results ← Phase 3.5 sweep + Phase 4 formal data (complete)
-  A3 Jacobi            ← active (start here for A3)
+  A3 Jacobi            ← full technical reference (kernel, extensions, scoring)
+  A3 Progress          ← active phase tracker (start here for A3 implementation)
+  A3 MCQ               ← all 15 MCQ answers with rationale
+  A3 Benchmark Results ← CX3 Rome times (fill after Phase 4)
 ```
 
 ## Active assessment context
 
 **A1 — COMPLETE. A2 — COMPLETE** (all 8 phases done, all 5 CI jobs green, submitted for instructor marking). **A3 is the current active assessment.**
 
-Use `assessment/A3 Jacobi.md` as the primary reference for A3 work. The branch is `ggf25`.
+Use `assessment/A3 Progress.md` as the primary working guide for A3. `assessment/A3 Jacobi.md` is the technical reference. The branch is `ggf25`.
 
 ## Authoring conventions
 
