@@ -1,8 +1,6 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/fl7AZ4Ya)
-[![Open in Codespaces](https://classroom.github.com/assets/launch-codespace-2972f46106e565e64193e422d61a12cf1da4916b45550586e14ef0a7c637dd04.svg)](https://classroom.github.com/open-in-codespaces?assignment_repo_id=23749385)
 # Assignment 1 — Numerical integration
 
-This is the **starter repo** for Assignment 1 of the PPP-OpenMP assessment. **Target: 20 marks** (out of 100 across A1+A2+A3).
+This is the **starter repo** for Assignment 1 of the PPP-OpenMP assessment. **Target: 20 marks** out of 100 (A1=20, A2=30, A3=40, plus a cohort-wide 10-pt hygiene bucket).
 
 Parallelise a composite-trapezoid integration of a deliberately cost-non-uniform `f(x)` over `[0, 1]` using OpenMP.
 
@@ -82,9 +80,9 @@ Grading is run once by the instructor at the **end of day 5** on a canonical CX3
 
 There is **no Rome benchmark CI on student forks**. Performance is measured by the instructor at the end of the cohort on a CX3 Rome node. You can run `evaluate.pbs` on your own CX3 account to populate your `tables.csv`.
 
-## Hygiene + commit history
+## Hygiene (10 pts, cohort-wide) + commit history
 
-- Build hygiene + lint compliance + README clarity contributes to the cross-cohort hygiene marks.
+- A separate **10-pt Hygiene bucket** — build cleanliness, lint compliance (clang-format / clang-tidy / cppcheck), README / English readability — is graded once across A1+A2+A3 on your final state. Hygiene in *this* repo contributes. See `assessment/rubric.md` in the lectures repo for the breakdown.
 - **Commit history** is *not* directly graded but is checked deterministically: see the lectures repo's `assessment/handouts/commit-history-guidance.md`. Patterns like a single mega-commit on day 5 with token messages are flagged for instructor review.
 
 ## What you may NOT do

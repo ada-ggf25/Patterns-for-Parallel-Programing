@@ -20,7 +20,9 @@
 
 #include "integrate.h"
 
-#include <cstdio>
+// Standard headers only: used for fixed-precision output without C-style varargs.
+#include <iomanip>
+#include <iostream>
 
 double integrate_parallel(double a, double b, long n)
 {
@@ -50,6 +52,8 @@ int main()
 
     // Deterministic output — stdout is the correctness channel only. Timing
     // is measured by the hyperfine harness into perf-results-a1.json.
-    std::printf("integral = %.12f\n", result);
+    // Use type-safe iostream formatting to preserve the exact 12 d.p. output
+    // while avoiding C-style varargs checks from clang-tidy.
+    std::cout << "integral = " << std::fixed << std::setprecision(12) << result << '\n';
     return 0;
 }
