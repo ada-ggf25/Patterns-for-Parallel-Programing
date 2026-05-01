@@ -1,8 +1,6 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/qmbzBbnU)
-[![Open in Codespaces](https://classroom.github.com/assets/launch-codespace-2972f46106e565e64193e422d61a12cf1da4916b45550586e14ef0a7c637dd04.svg)](https://classroom.github.com/open-in-codespaces?assignment_repo_id=23760312)
 # Assignment 2 — Mandelbrot: two-variant comparison
 
-This is the **starter repo** for Assignment 2 of the PPP-OpenMP assessment. **Target: 30 marks** (out of 100 across A1+A2+A3).
+This is the **starter repo** for Assignment 2 of the PPP-OpenMP assessment. **Target: 30 marks** out of 100 (A1=20, A2=30, A3=40, plus a cohort-wide 10-pt hygiene bucket).
 
 Estimate the area of the Mandelbrot set on a 5000×5000 grid — once with `#pragma omp parallel for`, once with `#pragma omp task` / `taskloop`, and justify which variant you'd ship.
 
@@ -64,6 +62,10 @@ OMP_NUM_THREADS=4 ./mandelbrot_for_tsan
 | MCQ | 2 | Deterministic auto-grading |
 | REFLECTION.md format + completion | 1 | CI-format-check (no canonical numerical cross-check) |
 | Reasoning question (instructor-marked) | 2 | Manual 0/1/2 |
+
+## Hygiene (10 pts, cohort-wide)
+
+A separate **10-pt Hygiene bucket** — build cleanliness, lint compliance (clang-format / clang-tidy / cppcheck), README / English readability — is graded once across A1+A2+A3 on your final state. Hygiene in *this* repo contributes. See `assessment/rubric.md` in the lectures repo for the breakdown.
 
 ## CHOICE.md format
 

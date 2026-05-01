@@ -1,0 +1,4 @@
+/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build/CMakeFiles/mandelbrot_for.dir
+/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build/CMakeFiles/mandelbrot_tasks.dir
+/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build/CMakeFiles/edit_cache.dir
+/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build/CMakeFiles/rebuild_cache.dir

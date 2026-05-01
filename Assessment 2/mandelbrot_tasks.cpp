@@ -11,7 +11,7 @@
 //
 // Aggregate the per-tile counts with a reduction or an atomic/critical.
 // Implementation uses option (b): parallel + single + taskloop with a
-// per-task reduction accumulator.
+// per-task local accumulator flushed into the shared total via atomic.
 //
 // This variant compiles to `./build/mandelbrot_tasks`.
 
@@ -63,28 +63,29 @@ long count_tile_upper(int i0, int j0, int j_half)
 long mandelbrot_tasks()
 {
     long outside = 0;
-    constexpr int J_HALF = NPOINTS / 2;
 
-    // `taskloop` distributes the outer tile rows (50 iterations) across tasks;
-    // the inner j-loop is sequential within each task, so each task processes
-    // one outer-tile row × all 25 upper-half j-tiles = 25 tiles per task.
-    // `reduction(+:outside)` gives every task a private accumulator
-    // (initialised to 0) that the runtime merges at task completion — no
-    // atomic write needed inside the task body. `firstprivate(J_HALF)` copies
-    // the constant by value so there is no shared pointer in the task data,
-    // which also avoids a TSan false positive from the runtime task-data pool.
-#pragma omp parallel default(none) shared(outside, J_HALF)
+    // Each task processes one outer tile-row (all j-tiles for a fixed i0).
+    // A task-local `tile_count` accumulates the row's contribution; a single
+    // `#pragma omp atomic` at the end of the task flushes it into `outside`.
+    // Using `atomic` rather than `taskloop reduction` avoids the race that
+    // TSan/Archer report with the opaque runtime combiner (`.red_comb.`):
+    // the combiner reads per-task private copies via internal OMP bookkeeping
+    // that TSan does not track as a proper happens-before edge.
+#pragma omp parallel default(none) shared(outside)
 #pragma omp single
     {
-#pragma omp taskloop grainsize(1) reduction(+ : outside) default(none) firstprivate(J_HALF)
+#pragma omp taskloop grainsize(1) default(none) shared(outside)
         for (int i0 = 0; i0 < NPOINTS; i0 += TILE) {
-            for (int j0 = 0; j0 < J_HALF; j0 += TILE) {
-                outside += 2 * count_tile_upper(i0, j0, J_HALF);
+            long tile_count = 0;
+            for (int j0 = 0; j0 < NPOINTS / 2; j0 += TILE) {
+                tile_count += 2L * count_tile_upper(i0, j0, NPOINTS / 2);
             }
+#pragma omp atomic
+            outside += tile_count;
         }
     } // implicit taskwait at end of single; implicit barrier at end of parallel
     if constexpr (NPOINTS % 2 == 1) {
-        const int j = J_HALF;
+        constexpr int j = NPOINTS / 2;
         for (int i = 0; i < NPOINTS; ++i) {
             const double cr = -2.0 + (3.0 * static_cast<double>(i) / NPOINTS);
             const double ci = -1.5 + (3.0 * static_cast<double>(j) / NPOINTS);

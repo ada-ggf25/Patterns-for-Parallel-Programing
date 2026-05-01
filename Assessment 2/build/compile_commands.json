@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/. -g -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/mandelbrot_for.dir/mandelbrot_for.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_for.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_for.cpp",
+  "output": "CMakeFiles/mandelbrot_for.dir/mandelbrot_for.cpp.o"
+},
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/. -g -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/mandelbrot_for.dir/mandelbrot_serial.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_serial.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_serial.cpp",
+  "output": "CMakeFiles/mandelbrot_for.dir/mandelbrot_serial.cpp.o"
+},
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/. -g -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/mandelbrot_tasks.dir/mandelbrot_tasks.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_tasks.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_tasks.cpp",
+  "output": "CMakeFiles/mandelbrot_tasks.dir/mandelbrot_tasks.cpp.o"
+},
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/. -g -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/mandelbrot_tasks.dir/mandelbrot_serial.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_serial.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-2-ada-ggf25/mandelbrot_serial.cpp",
+  "output": "CMakeFiles/mandelbrot_tasks.dir/mandelbrot_serial.cpp.o"
+}
+]
