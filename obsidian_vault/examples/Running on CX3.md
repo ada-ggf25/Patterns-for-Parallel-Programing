@@ -5,7 +5,7 @@ End-to-end recipe, from `ssh` to reading the output.
 ## One-time setup
 
 ```bash
-ssh myusername@login.cx3.hpc.ic.ac.uk
+ssh ggf25@login.cx3.hpc.ic.ac.uk
 git clone <this repo> ic-hpc-intro
 cd ic-hpc-intro/examples
 ml tools/prod GCC OpenMPI CMake

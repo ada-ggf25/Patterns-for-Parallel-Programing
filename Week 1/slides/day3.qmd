@@ -1,0 +1,585 @@
+---
+title: "Day 3 — OpenMP synchronisation, memory model, tasks"
+subtitle: "Morning lecture → afternoon A2 lab"
+author: "Gerard Gorman"
+institute: "Department of Earth Science and Engineering — Imperial College London"
+date: today
+date-format: long
+format:
+  revealjs:
+    theme: simple
+    slide-number: c/t
+    incremental: false
+    code-overflow: wrap
+    code-block-height: 600px
+    highlight-style: github
+    smaller: true
+    controls: true
+---
+
+## Day 3 roadmap
+
+**Morning** (09:00 – 12:00) — All lecturing, with short exercises.
+
+1. A1 retrospective
+2. Synchronisation primitives (barriers / critical / atomic / locks)
+3. The OpenMP-5.1 memory model
+4. `single` / `masked` / `nowait`
+5. Tasks, task dependences, `taskloop`
+6. A2 lab brief
+
+**Afternoon** (14:00 – 17:00) — A2 lab. No new material; instructor on hand.
+
+End-of-day deliverable: A2 complete (both variants + CHOICE.md + measurement table).
+
+## A1 retrospective {visibility="uncounted"}
+
+Yesterday you parallelised an integration kernel with non-uniform per-iter cost.
+
+- **What did the schedule sweep show?** Show of hands: who picked `static`? `dynamic, 64`? `guided`?
+- **What were your speedup curves at 16 / 64 / 128?** Where did they bend away from linear?
+- **What single thing surprised you?** Common reports: `static` was fine for small N; `dynamic` won for large N because of the spike region.
+
+Your `tables.csv` from yesterday should make this conversation evidence-based. If yours doesn't, fix that today.
+
+## Why synchronisation? {visibility="uncounted"}
+
+Threads need to agree on what they've done.
+
+- **Read-after-write** — thread A writes `x`; thread B reads `x`; without synchronisation B might read the old value.
+- **Mutual exclusion** — only one thread should update a shared counter at a time.
+- **Phase boundaries** — all threads should finish "produce" before any starts "consume".
+
+OpenMP's tools: barriers, critical sections, atomic ops, locks, the memory model (acquire/release), and reductions (covered yesterday).
+
+## Barriers — implicit and explicit
+
+```cpp
+#pragma omp parallel
+{
+    do_phase_a();
+#pragma omp barrier         // explicit — every thread waits here
+    do_phase_b();
+}                           // implicit barrier at region exit
+```
+
+- Every thread must reach the barrier before any thread proceeds.
+- **Implicit barriers** at the end of: `parallel`, `for`, `single`, `sections`.
+- Use `nowait` to strip an implicit barrier when the next stage has no dependence (covered later).
+
+## Implicit barriers under `for`
+
+```cpp
+#pragma omp parallel default(none) shared(a, b, n)
+{
+#pragma omp for                  // implicit barrier at end
+    for (size_t i = 0; i < n; ++i) a[i] = init(i);
+    // ← every thread sees a[i] consistent before continuing
+
+#pragma omp for
+    for (size_t i = 0; i < n; ++i) b[i] = a[i] * 2;
+}
+```
+
+The barrier between the two `for` constructs is what makes `b[i] = a[i] * 2` correct — without it, thread B might read `a[i]` while thread A is still writing it.
+
+## `nowait` — lifting the implicit barrier
+
+```cpp
+#pragma omp for nowait
+for (...) { unrelated_work_a(); }
+// no barrier — fast threads continue immediately
+
+#pragma omp for
+for (...) { unrelated_work_b(); }
+```
+
+- Strips the implicit barrier from one worksharing construct.
+- **Only safe when the next stage has no dependence on the previous one.**
+- A favourite source of subtle bugs — when in doubt, leave the barrier in.
+
+## The orphan-construct rule
+
+A worksharing directive (`for`, `single`, `sections`) is *orphaned* if it appears outside any enclosing `parallel` region — typically inside a function:
+
+```cpp
+void worker(std::vector<double>& v) {
+#pragma omp for default(none) shared(v)        // orphaned for
+    for (size_t i = 0; i < v.size(); ++i) v[i] *= 2.0;
+}
+
+#pragma omp parallel
+{ worker(v); }   // orphan binds to *this* enclosing parallel region
+```
+
+- Orphan binds to the dynamically enclosing `parallel` region.
+- Outside any `parallel`, `worker` runs serially — no error, just no parallelism.
+- See `assessment/handouts/orphaned-reduction.md` for a deep dive on orphan-reduction edge cases.
+
+## `critical` — semantics
+
+```cpp
+#pragma omp critical
+{
+    // arbitrary code; only one thread inside at a time, globally.
+}
+```
+
+- General-purpose mutex. Any code can go inside.
+- Expensive — every thread serialises through one global lock.
+- Use only when atomic / reduction / lock can't express what you need.
+
+## `critical` — naming and granularity
+
+```cpp
+#pragma omp critical (bucket_a)        // one mutex per name
+{ update_bucket_a(); }
+
+#pragma omp critical (bucket_b)        // independent mutex
+{ update_bucket_b(); }
+```
+
+- A *named* critical lets two regions with different names run in parallel.
+- Granularity is tied to *source code*, not data — if you have 1024 buckets, you can't have 1024 critical names.
+- For data-driven granularity (one mutex per data structure instance), use explicit locks.
+
+## `atomic` — semantics + supported ops
+
+```cpp
+#pragma omp atomic
+counter += 1;             // single read-modify-write
+```
+
+Compiles to a CPU atomic instruction (`lock xadd` on x86-64, etc.). Much cheaper than `critical`.
+
+Supported single-op forms (5.1):
+
+- `x op= expr` — `+=`, `-=`, `*=`, `/=`, bit-ops, etc.
+- `x++`, `++x`, `x--`, `--x`
+- `x = x op expr`
+
+Anything more complex (multi-statement update, branching) needs `critical`.
+
+## `atomic` — `read` / `write` / `update` / `capture`
+
+5.1 explicitly names four atomic *clauses*:
+
+```cpp
+#pragma omp atomic read
+v = shared_x;
+
+#pragma omp atomic write
+shared_x = v;
+
+#pragma omp atomic update     // default if no clause given
+shared_x += v;
+
+#pragma omp atomic capture    // read-modify-write + capture old value
+{ tmp = shared_x; shared_x += 1; }
+```
+
+Plus a memory-ordering clause: `seq_cst` (sequential consistency — the strongest, default), `acquire`, `release`, `acq_rel` (acquire-and-release), `relaxed`. We'll use `acquire`/`release` shortly — the slides on memory visibility define what they mean.
+
+## Choosing: `critical` vs `atomic` vs `reduction` vs `lock`
+
+| Need | Use |
+|---|---|
+| Many independent updates to one shared counter | `reduction` |
+| A single arithmetic update, occasionally | `atomic update` |
+| A small block of code under one global lock | `critical` |
+| Many independent locks, one per data instance | `omp_lock_t` |
+| Read-modify-write of a complex data structure | `critical` (or finer locks) |
+
+Default to `reduction`; reach for the next tool only when you must.
+
+## Same answer, three ways — `critical`
+
+{{< include _partials/day3/critical_vs_atomic__critical.qmd >}}
+
+- General-purpose mutual exclusion: any thread holding the (anonymous) lock blocks the rest.
+- Arbitrary loop bodies inside the `critical` block are allowed — that flexibility is the price you pay for the lock cost.
+- Slowest of the three at high thread counts.
+
+## Same answer, three ways — `atomic`
+
+{{< include _partials/day3/critical_vs_atomic__atomic.qmd >}}
+
+- A single hardware atomic read-modify-write — faster than `critical` because there's no lock acquire/release.
+- Restricted to one supported RMW expression on a single scalar (`+=`, `-=`, `*=`, `&=`, `|=`, `^=`, `++`, `--`, etc.).
+- Faster than `critical`, slower than `reduction`.
+
+## Same answer, three ways — `reduction`
+
+{{< include _partials/day3/critical_vs_atomic__reduction.qmd >}}
+
+- Each thread gets a private copy of `sum`; the OpenMP runtime combines them at region exit. No serialisation in the hot loop.
+- Cost ordering at high thread counts: `critical` ≫ `atomic` ≫ `reduction`.
+- All three functions return the same number; reduction is the canonical idiom. Reach for `critical` / `atomic` only when a reduction can't express your accumulator.
+
+## Why the memory model matters
+
+The synchronisation primitives we just covered (`critical`, `atomic`, locks) work because OpenMP defines *when* writes become visible to other threads. Without a memory model, even this innocent-looking handshake is broken:
+
+```cpp
+// Thread A:                            // Thread B:
+data = 42;                              while (!ready) ;
+ready = true;                           printf("%d\n", data);
+```
+
+It can print **0**, **42**, or anything else — the compiler and CPU may reorder writes; the writes may sit in store buffers; cache coherence may not yet have propagated.
+
+OpenMP 5.1 inherits the C++11 memory model and adds explicit `flush`, `acquire`, `release` semantics on top of the construct boundaries.
+
+## `flush` — what it does
+
+```cpp
+shared_data = 42;
+#pragma omp flush(shared_data)        // flush this variable
+shared_ready = true;
+#pragma omp flush                     // flush ALL accessible variables
+```
+
+- A `flush` is a *fence*: writes before it become visible after it; reads after it see writes-before.
+- Without a list, all currently-accessible variables are flushed.
+- 5.1 documents implicit-flush semantics for every other synchronisation primitive — most of the time you don't need explicit `flush`.
+
+## Implicit flush points — when writes become visible
+
+A thread's write becomes visible to other threads only at one of these synchronisation points; between them, the compiler is free to keep the value in a register or store buffer.
+
+OpenMP 5.1 implicitly flushes at:
+
+- Entry point & exit point of a `parallel` region.
+- The barrier at the end of `for`, `single`, `sections` (unless `nowait`).
+- Explicit `barrier`.
+- `atomic` (with appropriate ordering clause).
+- `critical` entry / exit.
+- `omp_set_lock` / `omp_unset_lock`.
+- `taskwait`, `taskgroup` end, `task` scheduling points.
+
+For A2/A3, the implicit flushes at pragma boundaries usually suffice.
+
+## Atomic memory ordering — the five clauses (5.1)
+
+Every `atomic` directive takes an optional ordering clause. `seq_cst` is the default and the safe choice; relaxed orderings are cheaper on weakly-ordered CPUs (arm64, POWER) but only pay off when paired correctly.
+
+- **`seq_cst`** *(default; legal on read / write / update / capture)* — every `seq_cst` access across all threads sits in a single global total order. Strongest, default, safe.
+- **`release`** *(write / update / capture)* — prior reads and writes on this thread complete *before* this store. Pairs with an `acquire`-load on the consumer side — the *publishing* half of a handshake.
+- **`acquire`** *(read / update / capture)* — subsequent reads and writes on this thread happen *after* this load. Pairs with a `release`-store on the producer side — the *subscribing* half.
+- **`acq_rel`** *(update / capture)* — acquire on the read part + release on the write part of one read-modify-write. The right tool for compare-and-swap and lock-free queue updates.
+- **`relaxed`** *(any kind)* — atomicity only, no ordering relative to other accesses. Use for standalone counters / statistics that don't gate any other state.
+
+Fix for the `data` / `ready` race on the "Why the memory model matters" slide:
+
+```cpp
+// Thread A (publisher):              // Thread B (subscriber):
+data = 42;                            int seen = 0;
+#pragma omp atomic write release      do {
+ready = 1;                            #pragma omp atomic read acquire
+                                        seen = ready;
+                                      } while (!seen);
+                                      printf("%d\n", data);   // sees 42
+```
+
+The release-store synchronises-with the acquire-load: every memory effect *before* the release on A is observable *after* the acquire on B.
+
+## Locks — when `critical` granularity isn't enough
+
+`critical` ties granularity to *source code* — one global mutex per name.
+
+When you need *data-driven* granularity (one mutex per data structure instance), use `omp_lock_t`:
+
+- One lock per bucket of a hash map.
+- One lock per node of a graph.
+- One lock per row of a sparse matrix.
+
+Independent operations against different locks proceed in parallel.
+
+## `omp_lock_t` lifecycle
+
+```cpp
+omp_lock_t lk;
+omp_init_lock(&lk);          // before use
+// ...
+omp_set_lock(&lk);           // acquire (blocks)
+update_protected_data();
+omp_unset_lock(&lk);         // release
+// ...
+omp_destroy_lock(&lk);       // before scope exit
+```
+
+- Plus a non-blocking `omp_test_lock(&lk)` returning bool.
+- Plus `omp_nest_lock_t` for re-entrant cases (rare; avoid if you can).
+- A RAII wrapper (a small C++ object whose destructor calls `omp_unset_lock` on scope exit) is recommended in production code.
+
+## Locks — full example: per-bucket counter
+
+{{< include _partials/day3/task_locks__bucketed_count.qmd >}}
+
+- One `omp_lock_t` *per bucket*. Threads colliding on different buckets stay parallel — *data-driven* granularity, which `critical` (one mutex per source name) cannot express.
+- Lifecycle in one place: `omp_init_lock` once at allocation, `set` / `unset` around every protected update, `omp_destroy_lock` once at teardown.
+- `omp_lock_t` is not RAII — in production, wrap `set` / `unset` in a small guard so an exception inside the protected section can't leak the lock.
+- Default to `atomic` or `reduction` first; reach for explicit locks only when per-record / per-node / per-bucket granularity matters.
+
+## `single` — the canonical idiom
+
+```cpp
+#pragma omp parallel default(none) shared(setup)
+{
+#pragma omp single
+    {
+        do_one_shot_setup(setup);
+    }
+    // implicit barrier — every thread sees the result
+
+    do_per_thread_work_using(setup);
+}
+```
+
+- Exactly one (any) thread runs the block.
+- Implicit barrier at exit — the rest of the team waits.
+- Use for one-shot setup, lazy initialisation, or task-spawn loops.
+- Add `nowait` if the rest of the team doesn't need to see what `single` did (e.g. one-thread logging) — but if they *do* read it, you've created a race.
+
+## `masked` — `single` minus the barrier
+
+```cpp
+#pragma omp parallel
+{
+#pragma omp masked          // 5.1 (replaces deprecated `master`)
+    {
+        printf("from thread 0 only\n");
+    }
+    // NO barrier — other threads continue immediately
+
+    do_per_thread_work();
+}
+```
+
+- Only thread 0 (default) runs the block.
+- *No* implicit barrier — other threads don't wait.
+- 5.1's `masked` deprecates `master`. They're semantically equivalent; `masked` is more general (any thread can be designated).
+
+## Why tasks?
+
+`parallel for` distributes a known iteration space. But many problems aren't loops:
+
+- Recursive divide-and-conquer (mergesort, quicksort, Barnes–Hut).
+- Producer-consumer pipelines.
+- Per-tile workloads with variable cost (Mandelbrot — A2).
+- Graph traversal (e.g. breadth-first search).
+
+A `task` is a unit of work the runtime queues + dispatches to threads. Tasks compose with parallel regions; tasks can spawn more tasks; the runtime balances load. (For loop-shaped problems inside a task region, `taskloop` is the worksharing-shaped cousin — covered later.)
+
+## Task lifecycle
+
+1. Encountered by a thread: `#pragma omp task { body }` packages `body` into a *task instance*.
+2. Queued in the team's task pool.
+3. Executed by *some* thread in the team — possibly the spawner itself, possibly another thread doing work-stealing.
+4. Synchronisation point (`taskwait`, end of `taskgroup`, end of `parallel` region) ensures all child tasks finish.
+
+Key: the spawning thread does **not** wait for the spawned task. It moves on.
+
+## `task` example - post-order tree sum
+
+{{< include _partials/day3/tasks_basic__tree_sum.qmd >}}
+
+- Driver (in `tasks_basic.cpp`): a `parallel + single` block calls `tree_sum(root)` so exactly **one** thread seeds the recursion; the rest of the team pick up child tasks from the queue as the recursion fans out.
+- Real-world relatives: quicksort, mergesort, Barnes–Hut tree walks, sparse Cholesky.
+
+## `taskgroup` — synchronising the subtree
+
+```cpp
+#pragma omp taskgroup
+{
+#pragma omp task
+    {
+        deep_recursion_spawning_more_tasks();
+    }
+}
+// at end of taskgroup: every descendant task has finished
+```
+
+- Stronger than `taskwait`: waits for every task spawned within the group, transitively.
+- The right tool for "I want everything below this point to be done before I continue".
+
+## Task data environment
+
+```cpp
+int outer = 42;
+#pragma omp task
+{ printf("%d\n", outer); }    // outer is firstprivate by default
+```
+
+- Variables captured from outer scope are **`firstprivate` by default** for tasks (unlike worksharing, where they're `shared`).
+- The captured value is fixed at task creation, not at task execution. Subtle.
+- To force shared, write `shared(outer)` explicitly. Common foot-gun.
+
+## Task dependences — `out` → `in`
+
+{{< include _partials/day3/task_dependences__chain.qmd >}}
+
+- Tasks A and B form a chain: A produces `a`, then B consumes `a` and produces `b`. Source-code order is not what schedules the tasks — the runtime reads the `depend()` clauses on each task.
+
+## Task dependences — what `depend()` means
+
+| Clause | Meaning |
+|---|---|
+| `depend(out: x)` | "I write `x`" — must finish before any later `in: x` / `inout: x` on the same address. |
+| `depend(in: x)` | "I read `x`" — wait for the most recent prior `out: x` / `inout: x`. |
+| `depend(inout: x)` | Read-write — waits for prior writers, blocks subsequent readers. |
+
+- The runtime builds a directed acyclic graph (DAG) — an ordering with no cycles — and schedules sibling tasks respecting that partial order.
+- Address identity is what matters: two tasks listing **the same variable** in conflicting clauses are ordered; tasks on different variables are not.
+
+## Task dependences — fan-in join
+
+(Continuation: still inside the same `parallel` / `single` block.)
+
+{{< include _partials/day3/task_dependences__join.qmd >}}
+
+- Task D writes `d` independently of the A→B chain — runtime can run it in parallel with A and B.
+- Task R declares `depend(in: b) depend(in: d)` — fan-in. The runtime waits for *both* upstream `out`s before scheduling R.
+- Implicit barrier at the end of the `parallel` region waits for the whole DAG.
+- Useful for irregular pipelines that don't fit a `taskloop`.
+
+## Task DAG visualisation {visibility="uncounted"}
+
+For `run_pipeline()` on the previous slide:
+
+```
+        out:a            in:a, out:b
+        ┌──────┐         ┌──────┐
+        │  A   │ ──────▶ │  B   │ ─┐
+        └──────┘         └──────┘  │
+        out:d                       ▼  in:b, in:d, out:r
+        ┌──────┐                  ┌──────┐
+        │  D   │ ────────────────▶│  R   │
+        └──────┘                  └──────┘
+```
+
+- A and D are independent — runtime may run them in parallel.
+- B waits for A; R waits for both B and D.
+- The runtime infers all of this from `depend` clauses; you never name the dependences explicitly.
+
+## `taskloop` — what it is
+
+`taskloop` is a worksharing-shaped task generator: it splits an iteration space into ⌈n / grainsize⌉ *tasks* and dispatches them through the team's task pool.
+
+{{< include _partials/day3/taskloop_apply__taskloop_form.qmd >}}
+
+- Needs a surrounding parallel region; `single` ensures only one thread issues the `taskloop` (otherwise every team member generates the chunks). The combined `#pragma omp parallel masked taskloop` form collapses the boilerplate.
+- Implicit `taskgroup` at the end — every chunk completes before the team continues. Use `nogroup` to strip it.
+
+## `taskloop` vs `parallel for`
+
+Same kernel, written with worksharing-for:
+
+{{< include _partials/day3/taskloop_apply__for_form.qmd >}}
+
+For a *flat, top-level* loop, `parallel for` (with whatever schedule fits the kernel — `static` here, `dynamic, C` for irregular) and `taskloop grainsize(C)` are roughly equivalent in performance. Reach for `taskloop` only when:
+
+- You're already inside a `task` region — a nested `parallel for` would spin up a new team (typically a perf cliff; nested parallelism is often disabled by default).
+- Chunks should *interleave* with sibling tasks on the same team.
+- Chunks need to carry `depend(...)` or `priority(...)` (5.1).
+
+Otherwise the `parallel for` form is simpler — no `single` boilerplate — and performs identically in practice.
+
+## `task` vs `parallel for`
+
+| Workload | Best fit |
+|---|---|
+| Regular loop, uniform per-iter cost | `parallel for` (`schedule(static)` or default) |
+| Regular loop, irregular per-iter cost | `parallel for schedule(dynamic, C)` |
+| Loop *inside* an enclosing task region | `taskloop grainsize(C)` (composes; no nested team) |
+| Recursive / divide-and-conquer | `task` + `taskwait` (inside `single`) |
+| Pipeline / dependence graph of independent tiles | `task` + `depend(...)` |
+| Producer / consumer over a queue | `task` + `priority` clause (5.1) |
+
+A2 lets you measure both forms side by side; expect roughly equivalent performance.
+
+## Workload shape — uniform cost
+
+`DAXPY` over a large vector:
+
+```cpp
+#pragma omp parallel for default(none) shared(a, b, c, n)
+for (size_t i = 0; i < n; ++i)
+    c[i] = a[i] + b[i];                // every iter the same cost
+```
+
+- `parallel for` with default `static` schedule: minimal overhead.
+- `taskloop` would pay per-chunk scheduling overhead for no benefit.
+- Use `taskloop` only when the loop is itself called from inside an enclosing task region or its chunks need to participate in a dependence graph — not as a generic "more advanced" loop construct.
+
+::: {.callout-note}
+DAXPY is a classic linear algebra operation whose name comes from:
+
+Double-precision A·X Plus Y
+:::
+
+## Workload shape — irregular cost
+
+Mandelbrot escape-time test:
+
+```cpp
+for (auto& tile : tiles) {
+    for (auto pixel : tile) {
+        // 1 to 1000 iters depending on c position
+        compute_escape(pixel);
+    }
+}
+```
+
+- Per-tile cost ratio can exceed 100×.
+- `parallel for static` puts the expensive tiles on whichever thread happens to own that range — easy 2× imbalance.
+- `parallel for schedule(dynamic, C)` work-steals to balance — the natural fit for a flat outer loop.
+
+## `grainsize` — too small vs too big
+
+| Symptom | Likely cause |
+|---|---|
+| At low thread counts, taskloop runs slower than serial | grainsize too small — task dispatch dominates |
+| At high thread counts, some threads idle while one finishes | grainsize too big — last task's tail dominates |
+| Speedup plateaus around 4-8× regardless of P | task pool contention (rare; tune queueing strategy) |
+
+For A2: tile size 100 × 100 ⇒ ~1250 tiles ⇒ grainsize 8 = ~150 tasks. Reasonable starting point.
+
+## A2 brief — what you'll be doing
+
+**Kernel**: count Mandelbrot-set membership over a 5000 × 5000 grid (post-symmetry: 5000 × 2500 sampled, doubled — see `mandelbrot.h`).
+
+You implement **two** variants:
+
+- `mandelbrot_for.cpp` — `#pragma omp parallel for collapse(2)` over the upper-half tile grid.
+- `mandelbrot_tasks.cpp` — `#pragma omp taskloop grainsize(...)` over the same tile grid.
+
+Plus one production recommendation in `CHOICE.md`. The image region has irregular per-tile cost but isn't pathological — neither variant is rigged to win.
+
+## CHOICE.md format and grading
+
+```
+---
+recommended: tasks                        # or: parallel_for
+measured_for_s: 0.49
+measured_tasks_s: 0.31
+justification_keyword: irregular_load_balance   # only if you recommend the slower variant
+---
+```
+
+The grader parses this header. Your recommendation passes if it matches the variant your **own** committed `perf-results-a2.json` shows as faster, OR if you recommend the slower one with a defensible keyword. **Either variant can be the right answer**.
+
+The canonical re-run is *not consulted* for CHOICE.
+
+## A2 deliverables checklist
+
+| Path | What |
+|---|---|
+| `assignment-2/mandelbrot_for.cpp` | parallel-for variant |
+| `assignment-2/mandelbrot_tasks.cpp` | tasks variant |
+| `assignment-2/CHOICE.md` | structured header + ≤ 200 word justification |
+| `assignment-2/answers.csv` | 15 MCQ answers |
+| `assignment-2/tables.csv` | per-variant per-thread-count times |
+| `assignment-2/REFLECTION.md` | required headers, ≥ 50 words per section |
+| `assignment-2/perf-results-a2.json` | hyperfine output from your CX3 self-bench |
+

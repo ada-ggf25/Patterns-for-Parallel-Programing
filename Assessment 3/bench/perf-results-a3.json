@@ -1,0 +1,7 @@
+{"results": [
+  {"thread_count": 1, "stage": "core", "time_s": 40.8654994291},
+  {"thread_count": 16, "stage": "core", "time_s": 14.11213808506},
+  {"thread_count": 64, "stage": "core", "time_s": 3.62134900326},
+  {"thread_count": 128, "stage": "core", "time_s": 1.9106854628},
+  {"thread_count": 128, "stage": "ext_numa_first_touch", "binary": "ext_numa_first_touch_stencil_ft", "time_s": 1.9066564296800002},
+  {"thread_count": 128, "stage": "ext_numa_first_touch", "binary": "ext_numa_first_touch_stencil_naive", "time_s": 18.71295970616}]}

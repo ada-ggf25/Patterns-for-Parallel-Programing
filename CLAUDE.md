@@ -1,0 +1,45 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+Study and teaching materials for the **Patterns for Parallel Programming** module at Imperial College London (MSc Applied Computational Science and Engineering). The module runs over three weeks and covers HPC cluster usage, OpenMP shared-memory programming, and MPI distributed-memory programming.
+
+## Repository structure
+
+```
+Introduction/       Intro to HPC on CX3: modules, PBS, OpenMP + MPI overview
+Week 1/             OpenMP in depth: days 2–4 (parallel-for, tasks, Jacobi stencil)
+                    Also contains student assessment (A1–A3) and grading rubric
+Assessment 1/       Student submission: OpenMP parallel-for numerical integration (20 marks)
+                    Deliverables: integrate.cpp, answers.csv, tables.csv, REFLECTION.md
+                    Has its own CLAUDE.md with build/lint/CI details
+Assessment 2/       Student submission: OpenMP parallel-for vs tasks Mandelbrot comparison (30 marks)
+                    Deliverables: mandelbrot_for.cpp, mandelbrot_tasks.cpp, answers.csv,
+                    tables.csv, CHOICE.md, REFLECTION.md
+obsidian_vault/     Student study notes (Obsidian markdown) — covers the full module
+                    (Introduction: cluster/PBS/OpenMP basics/MPI + Week 1: OpenMP in depth,
+                    performance, A1/A2/A3 assessment notes)
+```
+
+Each subdirectory has its own `CLAUDE.md` with build commands, architecture, and CI details specific to that section. **Always read the relevant subdirectory CLAUDE.md before making changes inside it.**
+
+## Branch naming
+
+Student branches follow the pattern `<initials><year>` (e.g. `ggf25`). The `main` branch holds the canonical instructor version. CI runs on push/PR to `main`.
+
+## High-level architecture
+
+Both sections follow the same pattern:
+- **Quarto (`.qmd`) → RevealJS HTML / Beamer PDF** for slides, built with `make html` / `make pdf`.
+- **C++ snippets / examples** that are both compiled+tested and embedded in slides. Source lives in `snippets/` (Week 1) or `examples/` (Introduction); never edit auto-generated `_partials/` directly.
+- **CX3 cluster** (PBS scheduler, AMD Rome / Intel Ice Lake nodes) is the target execution environment. PBS job scripts reference build outputs relative to the submit CWD (`examples/` in Introduction).
+
+## Common cross-cutting notes
+
+- Module stack on CX3: `ml tools/prod GCC OpenMPI CMake`
+- PBS jobs: submit from `examples/` (Introduction) so relative paths in `.pbs` scripts resolve correctly.
+- Slides and tested code are kept in sync via a partials pipeline — always edit the `.cpp` source, never the generated `.qmd` partials.
+- `obsidian_vault/` covers the full module (Introduction + Week 1 + assessments) — no build artefacts; never add front-matter or YAML headers to notes there.
+- `Introduction/AGENTS.md` is an identical copy of `Introduction/CLAUDE.md` kept for Codex compatibility; keep the two in sync if either is updated.

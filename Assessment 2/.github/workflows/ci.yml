@@ -1,0 +1,337 @@
+name: CI — Assignment 2 (Mandelbrot two-variant)
+
+on: [push, pull_request]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Static analysis & style — clang-format, clang-tidy, cppcheck.
+  # ─────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Static analysis & style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM 20 toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg software-properties-common lsb-release
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/keyrings/llvm.asc >/dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/llvm.asc] \
+          http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" \
+          | sudo tee /etc/apt/sources.list.d/llvm-toolchain.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-format-20 clang-tidy-20 cppcheck libomp-20-dev build-essential
+
+      - name: Configure & build (for compile_commands.json)
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_STANDARD=20
+          cmake --build build -j$(nproc)
+
+      - name: clang-tidy
+        run: |
+          set -o pipefail
+          clang-tidy-20 -p build $(git ls-files '*.cpp' '*.c') \
+            -- -I/usr/lib/llvm-20/include 2>&1 | tee clang-tidy.txt
+
+      - name: cppcheck
+        run: |
+          set -o pipefail
+          # `--error-exitcode=1` makes cppcheck *fail the step* on any
+          # finding rather than silently exit 0 with diagnostics on
+          # stdout (which produces a green badge for buggy code).
+          cppcheck --enable=performance,warning,style --quiet \
+            --error-exitcode=1 \
+            --project=build/compile_commands.json 2>&1 | tee cppcheck.txt
+
+      - name: clang-format
+        run: |
+          set -o pipefail
+          clang-format-20 --dry-run --Werror $(git ls-files '*.cpp' '*.h') 2>&1 | tee clang-format.txt
+
+      - name: Collect & upload untracked files
+        if: always()
+        uses: ./.github/actions/collect-untracked
+        with:
+          artifact-name: lint-logs
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Build & unit tests under ThreadSanitizer + Archer OMPT (Clang 18).
+  # Both Mandelbrot variants are built and exercised at {1, 2, 4, 8, 16}.
+  # ─────────────────────────────────────────────────────────────────────────
+  correctness:
+    name: Build & TSan correctness (both variants)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      CC:  clang
+      CXX: clang++
+
+      # -O1 (matches the lectures-repo TSan harness): preserves frame
+      # pointers + source-line attribution while running noticeably
+      # faster than -O0; -O2/-O3 over-inline and hurt symbolisation.
+      CFLAGS:   "-fsanitize=thread -g -O1 -fno-omit-frame-pointer"
+      CXXFLAGS: "-fsanitize=thread -g -O1 -fno-omit-frame-pointer"
+      LDFLAGS:  "-fsanitize=thread"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Clang/LLVM 18 toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install --no-install-recommends \
+              clang-18 clang++-18 lld-18 llvm-18-dev libomp-18-dev llvm-18-runtime
+          sudo update-alternatives --install /usr/bin/clang           clang           /usr/bin/clang-18           100
+          sudo update-alternatives --install /usr/bin/clang++         clang++         /usr/bin/clang++-18         100
+          sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-18 100
+
+      - name: Configure with CMake (Clang + TSan)
+        run: |
+          cmake -B build -S . \
+                -DCMAKE_C_COMPILER="$CC" \
+                -DCMAKE_CXX_COMPILER="$CXX" \
+                -DCMAKE_C_FLAGS="$CFLAGS" \
+                -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
+                -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS"
+
+      - name: Build both Mandelbrot variants
+        run: |
+          cmake --build build --target mandelbrot_for --parallel
+          cmake --build build --target mandelbrot_tasks --parallel
+
+      - name: Run correctness + TSan on both variants
+        run: |
+          LLVM_LIBDIR=$(llvm-config-18 --libdir)
+          export LD_LIBRARY_PATH="$LLVM_LIBDIR:$LD_LIBRARY_PATH"
+          export OMP_TOOL=enabled
+          export OMP_TOOL_LIBRARIES="$LLVM_LIBDIR/libarcher.so"
+          # halt_on_error=1            : fail on first race
+          # second_deadlock_stack=1    : print both stacks of a deadlock pair
+          # history_size=7             : 2^7 events/thread (default 2^2) for richer post-mortems
+          # external_symbolizer_path=… : explicit path to llvm-symbolizer (robust against PATH drift)
+          # ignore_noninstrumented_modules=1 : silence races inside libstdc++ / libgomp / etc.
+          export TSAN_OPTIONS="halt_on_error=1:second_deadlock_stack=1:history_size=7:external_symbolizer_path=$(which llvm-symbolizer):ignore_noninstrumented_modules=1"
+          echo "TSAN_OPTIONS=$TSAN_OPTIONS"
+
+          # CMake produces `mandelbrot_for` and `mandelbrot_tasks`; the grader
+          # and CHOICE.md use the semantic label `parallel_for` (vs `tasks`).
+          # Map binary suffix → semantic label so logs stay grader-compatible.
+          # Each (variant, thread-count) is exercised 3× to surface
+          # intermittent races whose appearance depends on schedule timing.
+          for variant in for tasks; do
+            binary="build/mandelbrot_${variant}"
+            case "$variant" in
+              for)   label="parallel_for" ;;
+              tasks) label="tasks" ;;
+            esac
+            for i in 1 2 4 8 16; do
+                for run in 1 2 3; do
+                    log="output-${label}-${i}-r${run}.txt"
+                    OMP_NUM_THREADS="$i" "$binary" 2>&1 | tee "$log"
+
+                    if grep -qE '^(WARNING|ERROR): ThreadSanitizer' "$log"; then
+                      echo "❌ TSan detected issues in $log" | tee -a correctness-a2.log
+                      exit 1
+                    fi
+
+                    if python3 bin/smart_diff.py "$log" expected_output.txt; then
+                        echo "Mandelbrot-${label}-${i}-r${run}: pass" | tee -a correctness-a2.log
+                    else
+                        echo "Mandelbrot-${label}-${i}-r${run}: fail" | tee -a correctness-a2.log
+                        diff "$log" expected_output.txt | tee -a correctness-a2.log
+                        exit 1
+                    fi
+                done
+            done
+          done
+          echo "✅ Both variants pass at all thread counts × 3 runs."
+
+      - name: Collect & upload untracked files
+        if: always()
+        uses: ./.github/actions/collect-untracked
+        with:
+          artifact-name: correctness-logs
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # REFLECTION.md format check — required headers + ≥ 50-word sections.
+  # Format-only; no content scoring.
+  # ─────────────────────────────────────────────────────────────────────────
+  reflection-format:
+    name: REFLECTION.md format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run REFLECTION format check
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          from pathlib import Path
+
+          REQUIRED = [
+              "Section 1", "Section 2", "Section 3", "Section 4",
+              "Reasoning question",
+          ]
+          MIN_WORDS = 50
+
+          path = "REFLECTION.md"
+          p = Path(path)
+          if not p.exists():
+              print(f"❌ {path}: file missing")
+              sys.exit(1)
+
+          text = p.read_text()
+          parts = re.split(r"^##\s+", text, flags=re.MULTILINE)
+          section_texts = parts[1:]
+          section_titles = [s.split("\n", 1)[0].strip() for s in section_texts]
+
+          fail = False
+          for required in REQUIRED:
+              if not any(t.startswith(required) for t in section_titles):
+                  print(f"❌ {path}: missing header '## {required}'")
+                  fail = True
+
+          for body, title in zip(section_texts, section_titles):
+              body = body.split("\n", 1)[1] if "\n" in body else ""
+              body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+              words = body.split()
+              if title.startswith("Section") and len(words) < MIN_WORDS:
+                  print(
+                      f"❌ {path} :: ## {title} :: {len(words)} words "
+                      f"(need ≥ {MIN_WORDS})"
+                  )
+                  fail = True
+
+          if fail:
+              print()
+              print("REFLECTION format check failed. This is a formative")
+              print("workflow — fix the diagnostics above and re-push. No")
+              print("marks are awarded by this workflow; it surfaces format")
+              print("issues so you can iterate.")
+              sys.exit(1)
+          print("✅ REFLECTION format check passed.")
+          PY
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Language check — flag non-English content in *.md and C++ comments.
+  # ─────────────────────────────────────────────────────────────────────────
+  language-check:
+    name: Language check (English only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install langdetect
+        run: |
+          python -m pip install --upgrade pip
+          pip install langdetect
+
+      - name: Run language detector
+        run: python .github/scripts/check_language.py | tee -a check-language.log
+
+      - name: Collect & upload untracked files
+        if: always()
+        uses: ./.github/actions/collect-untracked
+        with:
+          artifact-name: check-language-logs
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Generated-files check — fail if build artifacts or executables are
+  # committed.
+  # ─────────────────────────────────────────────────────────────────────────
+  generated-files-check:
+    name: Prevent committing build artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail if generated files or executables are present
+        shell: bash
+        run: |
+          regex='(
+            \.o$|\.obj$|
+            \.exe$|\.dll$|\.so$|\.dylib$|\.a$|\.lib$|\.pdb$|
+            Makefile$|^makefile$|
+            CMakeCache\.txt$|
+            cmake_install\.cmake$|
+            ^CMakeFiles/|
+            ^build/
+          )'
+
+          is_executable () {
+            local mime
+            mime=$(file -b --mime-type "$1")
+            case "$mime" in
+              application/x-executable*|\
+              application/x-pie-executable*|\
+              application/x-sharedlib*|\
+              application/x-dosexec*|\
+              application/x-mach-binary*)
+                return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          file_list=$(git ls-files)
+          offenders=()
+
+          while IFS= read -r f; do
+            [[ -e "$f" ]] || continue
+            [[ -d "$f" ]] && continue
+            if [[ "$f" =~ $regex ]]; then
+              offenders+=("$f")
+              continue
+            fi
+            if is_executable "$f"; then
+              offenders+=("$f")
+            fi
+          done <<<"$file_list"
+
+          if (( ${#offenders[@]} )); then
+            echo "Checking for generated/binary files: fail" | tee -a check-generated-files.log
+            echo "::error::The following generated/binary artifacts are committed:"
+            printf '%s\n' "${offenders[@]}"
+            exit 1
+          else
+            echo "Checking for generated/binary files: pass" | tee -a check-generated-files.log
+            echo "✅ No generated artifacts or binaries detected."
+          fi
+
+      - name: Collect & upload untracked files
+        if: always()
+        uses: ./.github/actions/collect-untracked
+        with:
+          artifact-name: generated-files-logs

@@ -7,7 +7,7 @@ $ qsub -I -l select=1:ncpus=2:mem=8gb -l walltime=02:00:00
 qsub: waiting for job 7315933.pbs-7 to start
 qsub: job 7315933.pbs-7 ready
 
-[me@cx3-13-2 ~]$
+[ggf25@cx3-13-2 ~]$
 ```
 
 You're now sitting on a compute node with the resources you asked for. The shell behaves like any other — except:

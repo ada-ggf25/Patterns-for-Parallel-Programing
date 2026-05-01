@@ -1,0 +1,40 @@
+---
+# Shared clang-tidy profile for ppp-openmp lectures + assessment.
+#
+# Selection philosophy:
+# - Enable modernize / readability / performance / bugprone / openmp broadly.
+# - Disable checks that fight *teaching* patterns (magic numbers in didactic
+#   code, C-style arrays when talking about raw memory, etc.).
+Checks: >
+  modernize-*,
+  readability-*,
+  performance-*,
+  bugprone-*,
+  openmp-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -modernize-loop-convert,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-init-variables,
+  -cppcoreguidelines-owning-memory
+
+# Make the four bug-catching categories fail the build. Stylistic
+# categories (readability-*, modernize-*'s minor parts) still warn
+# but don't fail. The two extra disabled checks above fire on
+# every-iteration array subscripts / sentinel-init style respectively;
+# they're stylistic and would block legitimate teaching code.
+WarningsAsErrors: >
+  cppcoreguidelines-*,
+  bugprone-*,
+  modernize-*,
+  performance-*
+
+HeaderFilterRegex: '.*'
+FormatStyle: file

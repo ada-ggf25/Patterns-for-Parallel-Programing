@@ -1,0 +1,5 @@
+/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build/CMakeFiles/stencil.dir
+/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build/CMakeFiles/ext_numa_first_touch_stencil_ft.dir
+/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build/CMakeFiles/ext_numa_first_touch_stencil_naive.dir
+/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build/CMakeFiles/edit_cache.dir
+/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build/CMakeFiles/rebuild_cache.dir

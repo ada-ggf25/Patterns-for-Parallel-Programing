@@ -5,7 +5,7 @@ CX3 is reached over `ssh` only. Public-key authentication is **disabled** on RCS
 ## The basic command
 
 ```bash
-ssh myusername@login.cx3.hpc.ic.ac.uk
+ssh ggf25@login.cx3.hpc.ic.ac.uk
 ```
 
 The hostname `login.cx3.hpc.ic.ac.uk` is a load-balancer DNS name covering four physical [[Login Shards|login shards]]. You may land on a different one each time.

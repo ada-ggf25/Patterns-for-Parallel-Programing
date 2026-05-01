@@ -48,6 +48,47 @@ The five most common ways an OpenMP program fails.
 
 See [[../pbs/Resource Selection]] and [[OMP Environment Variables]].
 
+## 6. Pragma typo silently compiles
+
+**Symptom:** Program runs at single-thread speed; scaling curve is flat 1.0× everywhere.
+
+**Cause:** `#pragma opm parallel` (or any misspelling) is treated as an unknown pragma and silently ignored. The code is serial — OpenMP never sees it. The answer is correct (no race), but speedup is exactly 1.0 regardless of thread count.
+
+**Fix:** Check compiler output for `warning: unknown pragma ignored`. Clang emits this under `-Wall`; the course's `.clang-tidy` enforces it. The symptom is a perfectly flat speedup curve — suspiciously identical to the serial baseline time scaled by thread count.
+
+```cpp
+// BUG — typo: 'opm' not 'omp'
+#pragma opm parallel for reduction(+:sum)   // silently ignored
+
+// FIX
+#pragma omp parallel for reduction(+:sum)   // correctly compiled
+```
+
+## 7. Using `critical` instead of `reduction` (correctness vs performance)
+
+**Symptom:** The answer is correct, but the parallel version is slower than serial — sometimes *much* slower.
+
+**Cause:** `critical` serialises every iteration through a global mutex. With `n = 1e8` iterations and 128 threads, the mutex is acquired 1e8 times — far more expensive than a scalar add.
+
+```cpp
+// CORRECT but serial-rate performance
+double sum = 0.0;
+#pragma omp parallel for default(none) shared(sum, a, n)
+for (size_t i = 0; i < n; ++i) {
+#pragma omp critical
+    sum += a[i];          // one mutex acquire per iteration × n iterations
+}
+
+// FAST and correct
+double sum = 0.0;
+#pragma omp parallel for default(none) shared(a, n) reduction(+:sum)
+for (size_t i = 0; i < n; ++i) {
+    sum += a[i];          // private copy per thread; combined once at region exit
+}
+```
+
+**Fix:** Always prefer `reduction` for accumulators. Only reach for `critical` when the update cannot be expressed as a reduction — e.g., appending to a `std::vector`.
+
 ## Bonus: tiny parallel regions
 
 **Symptom:** Loop has `n=1000`; with 8 threads it's *slower* than serial.

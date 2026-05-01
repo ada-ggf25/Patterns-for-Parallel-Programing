@@ -1,0 +1,1 @@
+/usr/bin/clang++-18 -O3 -DNDEBUG CMakeFiles/stencil.dir/core/stencil.cpp.o -o stencil  -Wl,-rpath,/usr/lib/llvm-18/lib /usr/lib/llvm-18/lib/libomp.so /lib/x86_64-linux-gnu/libpthread.a 

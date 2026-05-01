@@ -1,0 +1,3 @@
+/home/guilherme/imperial/ppp-openmp-assessment-1-ada-ggf25/build/CMakeFiles/integrate.dir
+/home/guilherme/imperial/ppp-openmp-assessment-1-ada-ggf25/build/CMakeFiles/edit_cache.dir
+/home/guilherme/imperial/ppp-openmp-assessment-1-ada-ggf25/build/CMakeFiles/rebuild_cache.dir

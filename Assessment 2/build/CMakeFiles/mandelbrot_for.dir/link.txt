@@ -1,0 +1,1 @@
+/usr/bin/clang++-18 -g CMakeFiles/mandelbrot_for.dir/mandelbrot_for.cpp.o CMakeFiles/mandelbrot_for.dir/mandelbrot_serial.cpp.o -o mandelbrot_for  -Wl,-rpath,/usr/lib/llvm-18/lib /usr/lib/llvm-18/lib/libomp.so /lib/x86_64-linux-gnu/libpthread.a 

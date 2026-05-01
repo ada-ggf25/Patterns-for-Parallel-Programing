@@ -47,7 +47,7 @@ Idiomatic modern CMake — link the imported target, no manual flags.
 ## On CX3
 
 ```bash
-ssh me@login.cx3.hpc.ic.ac.uk
+ssh ggf25@login.cx3.hpc.ic.ac.uk
 git clone <this repo> ic-hpc-intro
 cd ic-hpc-intro/examples
 
