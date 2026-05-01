@@ -1,0 +1,8 @@
+#build/
+#**/*.o
+
+# Local Claude-Code guidance — per ~/CLAUDE.md, never tracked.
+#**/CLAUDE.md
+
+# Private notes — never tracked.
+#**/obsidian_vault/

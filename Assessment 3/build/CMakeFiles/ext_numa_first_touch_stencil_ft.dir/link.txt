@@ -1,0 +1,1 @@
+/usr/bin/clang++-18 -O3 -DNDEBUG CMakeFiles/ext_numa_first_touch_stencil_ft.dir/extension/numa_first_touch/stencil_ft.cpp.o -o ext_numa_first_touch_stencil_ft  -Wl,-rpath,/usr/lib/llvm-18/lib /usr/lib/llvm-18/lib/libomp.so /lib/x86_64-linux-gnu/libpthread.a 

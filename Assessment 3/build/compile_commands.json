@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/core -O3 -DNDEBUG -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/stencil.dir/core/stencil.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/core/stencil.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/core/stencil.cpp",
+  "output": "CMakeFiles/stencil.dir/core/stencil.cpp.o"
+},
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/core -O3 -DNDEBUG -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/ext_numa_first_touch_stencil_ft.dir/extension/numa_first_touch/stencil_ft.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/extension/numa_first_touch/stencil_ft.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/extension/numa_first_touch/stencil_ft.cpp",
+  "output": "CMakeFiles/ext_numa_first_touch_stencil_ft.dir/extension/numa_first_touch/stencil_ft.cpp.o"
+},
+{
+  "directory": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/build",
+  "command": "/usr/bin/clang++-18  -I/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/core -O3 -DNDEBUG -std=c++20 -fopenmp=libomp -fopenmp-version=51 -Wall -Wextra -Wpedantic -Wno-unused-parameter -o CMakeFiles/ext_numa_first_touch_stencil_naive.dir/extension/numa_first_touch/stencil_naive.cpp.o -c /home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/extension/numa_first_touch/stencil_naive.cpp",
+  "file": "/home/guilherme/imperial/ppp-openmp-assessment-3-ada-ggf25/extension/numa_first_touch/stencil_naive.cpp",
+  "output": "CMakeFiles/ext_numa_first_touch_stencil_naive.dir/extension/numa_first_touch/stencil_naive.cpp.o"
+}
+]
